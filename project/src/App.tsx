@@ -3,6 +3,7 @@ import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import LogsView from './components/LogsView';
 import Firewall from './components/Firewall';
+import Statistics from './components/Statistics';
 import { generateMockLogs } from './utils/mockData';
 import { COLORS } from './constants/theme';
 import { SeverityStats } from './types';
@@ -29,6 +30,7 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeSection === 'dashboard' && <Dashboard stats={stats} totalLogs={logs.length} logs={logs} />}
+        {activeSection === 'statistics' && <Statistics logs={logs} totalLogs={logs.length} />}
         {activeSection === 'logs' && <LogsView logs={logs} />}
         {activeSection === 'threats' && <Firewall totalLogs={logs.length} />}
         {activeSection === 'settings' && (

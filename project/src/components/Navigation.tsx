@@ -1,7 +1,6 @@
-import { Shield, LayoutDashboard, FileText, AlertTriangle, Settings } from 'lucide-react';
+import { Shield, LayoutDashboard, FileText, AlertTriangle, Settings, BarChart3 } from 'lucide-react';
 import { COLORS } from '../constants/theme';
 import logo from '../Ministère_des_Armées_et_des_Anciens_Combattants.webp';
-
 
 interface NavigationProps {
   activeSection: string;
@@ -11,6 +10,7 @@ interface NavigationProps {
 export default function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'statistics', label: 'Statistiques', icon: BarChart3 },
     { id: 'threats', label: 'Firewall', icon: AlertTriangle },
     { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -28,12 +28,11 @@ export default function Navigation({ activeSection, onSectionChange }: Navigatio
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
             <div className="flex items-center space-x-3">
-            <img 
+              <img 
                 src={logo} 
                 alt="Ministère des Armées" 
                 className="h-12 w-auto"
               />
-              
               {/* Séparateur vertical */}
               <div 
                 className="h-10 w-px"
