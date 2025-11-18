@@ -170,7 +170,6 @@ def detect_bug(row: dict, fallback_timestamp: str | None = None,
             bug_type = "negative_bytes"
 
     if bug_type is None:
-        # aucun bug détecté
         return None
 
     # ---------------- Construction de la réponse Bug ----------------
@@ -223,9 +222,6 @@ def detect_bug(row: dict, fallback_timestamp: str | None = None,
 # 	bug_event = detect_bug(row, fallback_timestamp=last_ts, fallback_firewall_id=last_fw)
 
 # 	if bug_event is not None:
-# 		# -> Tu ajoutes bug_event dans ton tableau / xlsx / JSON
-# 		# -> TU NE PASSES PAS par le modèle RF
 # 		print("Bug détecté :", bug_event)
 # 	else:
-# 		# -> Tu peux préparer X et appeler ton modèle RF sur cette ligne
 # 		print("Ligne valide, on peut prédire.")
