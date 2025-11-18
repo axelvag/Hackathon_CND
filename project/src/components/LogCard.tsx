@@ -1,12 +1,28 @@
-import { Clock, Shield, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, Shield, AlertCircle, X } from 'lucide-react';
 import { SecurityLog } from '../types';
 import { COLORS } from '../constants/theme';
+import { formatRelativeTime } from '../utils/timeUtils';
 
 interface LogCardProps {
   log: SecurityLog;
+  isResolved?: boolean;
+  onDismiss?: (e: React.MouseEvent) => void;
+  onClick?: () => void;
 }
 
-export default function LogCard({ log }: LogCardProps) {
+export default function LogCard({ log, isResolved = false, onDismiss, onClick }: LogCardProps) {
+  const [relativeTime, setRelativeTime] = useState(formatRelativeTime(log.timestamp));
+
+  // Mettre à jour le temps relatif toutes les secondes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRelativeTime(formatRelativeTime(log.timestamp));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [log.timestamp]);
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'High':
@@ -20,29 +36,33 @@ export default function LogCard({ log }: LogCardProps) {
     }
   };
 
-  const formatTimestamp = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).format(date);
-  };
-
   return (
     <div
-      className="rounded-lg p-4 border transition-all hover:border-opacity-50"
+      className="rounded-lg p-4 border transition-all hover:border-opacity-50 relative cursor-pointer"
       style={{
         backgroundColor: COLORS.background.card,
-        borderColor: COLORS.border,
+        borderColor: isResolved ? COLORS.success : COLORS.border,
         borderLeftWidth: '4px',
-        borderLeftColor: getSeverityColor(log.severity),
+        borderLeftColor: isResolved ? COLORS.success : getSeverityColor(log.severity),
+        opacity: isResolved ? 0.7 : 1,
       }}
+      onClick={onClick}
     >
-      <div className="flex items-start justify-between mb-3">
+      {onDismiss && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss(e);
+          }}
+          className="absolute top-2 right-2 p-1 rounded-md transition-all hover:opacity-80"
+          style={{
+            color: COLORS.severity.high,
+          }}
+        >
+          <X size={16} />
+        </button>
+      )}
+      <div className="flex items-start justify-between mb-3 pr-6">
         <div className="flex items-center space-x-3">
           <div
             className="px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wide"
@@ -76,7 +96,7 @@ export default function LogCard({ log }: LogCardProps) {
         </div>
         <div className="flex items-center space-x-2" style={{ color: COLORS.text.muted }}>
           <Clock size={14} />
-          <span className="text-xs font-mono">{formatTimestamp(log.timestamp)}</span>
+          <span className="text-xs">{relativeTime}</span>
         </div>
       </div>
 

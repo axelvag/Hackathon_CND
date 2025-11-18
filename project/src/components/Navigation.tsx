@@ -11,7 +11,7 @@ interface NavigationProps {
 export default function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'threats', label: 'Threats', icon: AlertTriangle },
+    { id: 'threats', label: 'Firewall', icon: AlertTriangle },
     { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
