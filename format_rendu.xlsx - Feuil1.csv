@@ -1,0 +1,202 @@
+index,firewall_id,timestamp,bug_type,severity,explanation,type,attack_type
+,FW-B,2025-04-01T00:00:07Z,malformed_timestamp,High,Timestamp invalide — tri temporel impossible.,Bug,
+,FW-A,2025-04-01T00:00:25Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-B,2025-04-01T00:00:41Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-B,2025-04-01T00:00:59Z,nonnumeric_port,Medium,Port non numérique — empêche mapping service/port.,Bug,
+,FW-B,2025-04-01T00:01:10Z,nonnumeric_port,Medium,Port non numérique — empêche mapping service/port.,Bug,
+,FW-B,2025-04-01T00:01:22Z,missing_field,Low,Champ manquant — perte d'information contextuelle.,Bug,
+,FW-A,2025-04-01T00:01:39Z,missing_field,Low,Champ manquant — perte d'information contextuelle.,Bug,
+,FW-A,2025-04-01T00:01:40Z,negative_bytes,Medium,Octets négatifs — incohérence de comptage.,Bug,
+,FW-B,2025-04-01T00:02:02Z,nonnumeric_port,Medium,Port non numérique — empêche mapping service/port.,Bug,
+,FW-B,2025-04-01T00:02:09Z,missing_field,Low,Champ manquant — perte d'information contextuelle.,Bug,
+,FW-A,2025-04-01T00:02:13Z,missing_field,Low,Champ manquant — perte d'information contextuelle.,Bug,
+,FW-B,2025-04-01T00:02:19Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-A,2025-04-01T00:02:25Z,invalid_ip,High,IP invalide — données corrompues ou erronées.,Bug,
+,FW-A,2025-04-01T00:02:36Z,missing_field,Low,Champ manquant — perte d'information contextuelle.,Bug,
+,FW-A,2025-04-01T00:02:37Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-A,2025-04-01T00:02:55Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-B,2025-04-01T00:03:06Z,duplicate_fields,Low,Champs dupliqués — peut provoquer ambiguïté de parsing.,Bug,
+,FW-B,2025-04-01T00:03:09Z,malformed_timestamp,High,Timestamp invalide — tri temporel impossible.,Bug,
+,FW-A,2025-04-01T00:03:23Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-B,2025-04-01T00:03:31Z,corrupt_line,High,Ligne corrompue — impossible à parser correctement.,Bug,
+,FW-A,2025-04-01T00:03:42Z,invalid_ip,High,IP invalide — données corrompues ou erronées.,Bug,
+,FW-A,2025-04-01T00:03:45Z,nonnumeric_port,Medium,Port non numérique — empêche mapping service/port.,Bug,
+,FW-A,2025-04-01T00:03:55Z,malformed_timestamp,High,Timestamp invalide — tri temporel impossible.,Bug,
+,FW-B,2025-04-01T00:04:18Z,malformed_timestamp,High,Timestamp invalide — tri temporel impossible.,Bug,
+,FW-B,2025-04-01T00:04:52Z,negative_bytes,Medium,Octets négatifs — incohérence de comptage.,Bug,
+,FW-A,2025-04-01T00:04:54Z,malformed_timestamp,High,Timestamp invalide — tri temporel impossible.,Bug,
+,FW-A,2025-04-01T00:05:16Z,invalid_ip,High,IP invalide — données corrompues ou erronées.,Bug,
+,FW-B,2025-04-07T10:39:22Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:39:23Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:39:37Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T10:39:44Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T10:39:46Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T10:39:50Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T10:39:58Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:40:17Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T10:40:24Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:41:10Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T10:41:50Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T10:42:11Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T10:43:02Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:43:39Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:43:45Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:44:05Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:44:09Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:44:19Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:44:27Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:45:45Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:45:51Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:45:59Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:46:02Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:46:35Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T10:46:50Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:47:23Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:47:28Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:47:29Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:47:43Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T10:47:57Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:48:08Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:48:20Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:48:25Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:48:57Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:48:58Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:49:27Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:49:32Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:49:50Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T10:50:49Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:50:58Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:51:00Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:51:11Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:51:36Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T10:51:46Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:52:02Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:52:20Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:52:35Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:52:49Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:53:21Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T10:53:47Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:53:56Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:54:00Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:54:15Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T10:54:24Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:54:45Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:54:51Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:55:02Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:55:11Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:55:12Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:55:26Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T10:55:29Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T10:56:23Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T10:57:06Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:57:28Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T10:57:49Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T10:58:34Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T10:58:59Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T10:59:30Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:00:16Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:00:24Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:00:28Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:00:38Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:00:40Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:00:41Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:00:54Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:01:04Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:01:53Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:02:22Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:02:29Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:02:56Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:03:03Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:03:14Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:03:42Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:03:59Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:04:06Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:04:09Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:04:13Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:04:24Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T11:04:45Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:04:49Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:05:19Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:05:26Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:05:30Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:05:36Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:05:41Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:05:56Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:06:20Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:06:31Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:06:54Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:07:44Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:07:58Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:08:02Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:08:10Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:08:15Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:08:25Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:08:53Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:10:03Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:10:14Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:10:37Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:10:44Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:10:51Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:10:57Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:11:16Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:11:17Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:11:38Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:12:24Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:12:34Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:12:41Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:12:53Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:12:56Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T11:13:28Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:13:58Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:14:03Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:14:08Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:14:15Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:14:35Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:14:44Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:14:45Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:14:50Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:14:56Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T11:15:35Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-B,2025-04-07T11:16:25Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:16:40Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:16:51Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:17:01Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:17:12Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:18:38Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:18:59Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:19:01Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:19:09Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-B,2025-04-07T11:19:35Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:19:41Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:20:18Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:20:59Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:21:51Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:21:57Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:22:10Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:22:46Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:22:49Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:23:01Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:23:06Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:23:27Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:23:55Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:24:15Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-B,2025-04-07T11:24:19Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:24:40Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:24:51Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:25:02Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:26:12Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:26:24Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:26:30Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-A,2025-04-07T11:26:32Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:26:46Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-B,2025-04-07T11:27:24Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:27:27Z,,High,Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.,Attack,ddos
+,FW-B,2025-04-07T11:28:15Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:28:59Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:30:03Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-B,2025-04-07T11:30:52Z,,High,Téléchargement malveillant — risque d'infection.,Attack,malware_download
+,FW-A,2025-04-07T11:30:55Z,,Medium,Tentative XSS — attaque applicative visant scripts côté client.,Attack,xss
+,FW-A,2025-04-07T11:31:02Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
+,FW-A,2025-04-07T11:31:17Z,,High,Tentative d'injection SQL — attaque applicative critique.,Attack,sql_injection
+,FW-A,2025-04-07T11:31:27Z,,Medium,Scan de ports — activité de reconnaissance.,Attack,port_scan
+,FW-A,2025-04-07T11:31:42Z,,High,Brute-force SSH — tentative de compromission de comptes.,Attack,brute_force_ssh
