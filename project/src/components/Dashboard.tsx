@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { SeverityStats, SecurityLog } from '../types';
 import { COLORS } from '../constants/theme';
@@ -8,96 +9,65 @@ interface DashboardProps {
   stats: SeverityStats;
   totalLogs: number;
   logs: SecurityLog[];
+  resolvedLogs: Set<string>;
 }
 
-export default function Dashboard({ stats, totalLogs, logs }: DashboardProps) {
-  const [visibleLogs, setVisibleLogs] = useState<SecurityLog[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [exitingLogs, setExitingLogs] = useState<Set<string>>(new Set());
-  const [enteringLogs, setEnteringLogs] = useState<Set<string>>(new Set());
-
-  // Trier les logs par timestamp (plus récents en premier) et prendre les logs nécessaires
-  const sortedLogs = useMemo(() => {
+export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: DashboardProps) {
+  const navigate = useNavigate();
+  
+  // Trier les logs par timestamp (plus récents en premier) et prendre les 3 derniers
+  const lastThreeLogs = useMemo(() => {
     return [...logs]
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 3);
   }, [logs]);
 
-  // Réinitialiser quand les logs changent
-  useEffect(() => {
-    setVisibleLogs([]);
-    setCurrentIndex(0);
-    setExitingLogs(new Set());
-    setEnteringLogs(new Set());
-  }, [logs]);
+  const [enteringLogs, setEnteringLogs] = useState<Set<string>>(new Set());
+  const previousLogsRef = useRef<Set<string>>(new Set());
+  const isInitialMountRef = useRef(true);
 
+  // Détecter les nouveaux logs et appliquer l'animation
   useEffect(() => {
-    if (currentIndex < sortedLogs.length) {
-      // Délai aléatoire entre 1 et 5 secondes
-      const delay = Math.random() * 4000 + 1000; // 1000ms à 5000ms
-      
+    const currentLogIds = new Set(lastThreeLogs.map(log => log.id.toString()));
+    const previousLogIds = previousLogsRef.current;
+
+    // Au premier chargement, initialiser la référence sans animation
+    if (isInitialMountRef.current) {
+      previousLogsRef.current = currentLogIds;
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    // Trouver les nouveaux logs (présents maintenant mais pas avant)
+    const newLogIds = new Set<string>();
+    currentLogIds.forEach(id => {
+      if (!previousLogIds.has(id)) {
+        newLogIds.add(id);
+      }
+    });
+
+    if (newLogIds.size > 0) {
+      // Marquer les nouveaux logs pour l'animation
+      setEnteringLogs(newLogIds);
+
+      // Retirer le marqueur après l'animation
       const timer = setTimeout(() => {
-        const newLog = sortedLogs[currentIndex];
-        const now = new Date();
-        
-        setVisibleLogs((prev) => {
-          // Le nouveau log a le timestamp le plus récent (maintenant)
-          const adjustedLog = {
-            ...newLog,
-            timestamp: new Date(now)
-          };
-
-          // Marquer le nouveau log pour l'animation d'entrée
-          setEnteringLogs((prevEntering) => new Set(prevEntering).add(adjustedLog.id));
-          
-          // Retirer le marqueur d'entrée après l'animation
-          setTimeout(() => {
-            setEnteringLogs((prevEntering) => {
-              const newSet = new Set(prevEntering);
-              newSet.delete(adjustedLog.id);
-              return newSet;
-            });
-          }, 400); // Durée de l'animation
-
-          // Les logs existants sont décalés d'une seconde vers le passé
-          // pour maintenir la cohérence : log[0] = maintenant, log[1] = -1s, log[2] = -2s
-          const updatedPrev = prev.map((log, idx) => ({
-            ...log,
-            timestamp: new Date(now.getTime() - ((idx + 1) * 1000))
-          }));
-
-          const updated = [adjustedLog, ...updatedPrev];
-          
-          // Si on a plus de 3 logs, marquer le plus ancien pour animation de sortie
-          if (updated.length > 3) {
-            const oldestLog = updated[updated.length - 1];
-            // Marquer le plus ancien pour animation de sortie
-            setExitingLogs((prevExiting) => new Set(prevExiting).add(oldestLog.id));
-            
-            // Retirer le plus ancien après l'animation
-            setTimeout(() => {
-              setVisibleLogs((current) => {
-                // Retirer le log le plus ancien de la liste
-                return current.filter((log) => log.id !== oldestLog.id);
-              });
-              setExitingLogs((prevExiting) => {
-                const newSet = new Set(prevExiting);
-                newSet.delete(oldestLog.id);
-                return newSet;
-              });
-            }, 400); // Durée de l'animation
-            
-            // Garder temporairement le log dans la liste pour l'animation
-            return updated;
-          }
+        setEnteringLogs(prev => {
+          const updated = new Set(prev);
+          newLogIds.forEach(id => updated.delete(id));
           return updated;
         });
-        
-        setCurrentIndex((prev) => prev + 1);
-      }, delay);
+      }, 500); // Durée de l'animation
+
+      // Mettre à jour la référence
+      previousLogsRef.current = currentLogIds;
 
       return () => clearTimeout(timer);
+    } else {
+      // Mettre à jour la référence même s'il n'y a pas de nouveaux logs
+      previousLogsRef.current = currentLogIds;
     }
-  }, [currentIndex, sortedLogs, visibleLogs.length]);
+  }, [lastThreeLogs]);
   const StatCard = ({
     label,
     value,
@@ -193,23 +163,27 @@ export default function Dashboard({ stats, totalLogs, logs }: DashboardProps) {
           Derniers Logs
         </h3>
         <div className="space-y-3 relative min-h-[200px]">
-          {visibleLogs.length === 0 && (
+          {lastThreeLogs.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: COLORS.text.secondary }}>
-              Chargement des logs...
+              Aucun log disponible
             </p>
+          ) : (
+            lastThreeLogs.map((log) => {
+              const isResolved = resolvedLogs.has(log.id.toString());
+              const isEntering = enteringLogs.has(log.id.toString());
+              
+              return (
+                <div 
+                  key={log.id}
+                  className={isEntering ? 'log-enter' : ''}
+                  onClick={() => navigate(`/logs/${log.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <LogCard log={log} isResolved={isResolved} />
+                </div>
+              );
+            })
           )}
-          {visibleLogs.slice(0, 4).map((log) => {
-            const isExiting = exitingLogs.has(log.id);
-            const isEntering = enteringLogs.has(log.id);
-            return (
-              <div
-                key={log.id}
-                className={isExiting ? 'log-exit' : isEntering ? 'log-enter' : ''}
-              >
-                <LogCard log={log} />
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

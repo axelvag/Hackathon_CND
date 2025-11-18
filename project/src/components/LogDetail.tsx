@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock } from 'lucide-react';
-import { SecurityLog } from '../types';
+import { SecurityLog, formatLogId } from '../types';
 import { COLORS } from '../constants/theme';
 import { formatRelativeTime } from '../utils/timeUtils';
+import { loadLogComments, addLogComment, LogComment } from '../utils/storage';
 
 interface LogDetailProps {
   log: SecurityLog;
@@ -13,19 +15,41 @@ interface LogDetailProps {
   onDismiss: () => void;
 }
 
-interface Comment {
-  id: string;
-  author: string;
-  content: string;
-  timestamp: Date;
-}
-
-export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve, onDismiss }: LogDetailProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
+export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve }: LogDetailProps) {
+  const navigate = useNavigate();
+  const [comments, setComments] = useState<LogComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+
+  // Charger les commentaires depuis localStorage
+  useEffect(() => {
+    const loadedComments = loadLogComments(log.id);
+    setComments(loadedComments);
+
+    // Écouter les changements de localStorage (pour synchronisation entre onglets)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cyberdefense_log_comments') {
+        const loadedComments = loadLogComments(log.id);
+        setComments(loadedComments);
+      }
+    };
+
+    // Écouter les événements personnalisés pour synchronisation dans le même onglet
+    const handleCommentUpdate = () => {
+      const loadedComments = loadLogComments(log.id);
+      setComments(loadedComments);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('logCommentUpdated', handleCommentUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('logCommentUpdated', handleCommentUpdate as EventListener);
+    };
+  }, [log.id]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -40,21 +64,49 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve,
     }
   };
 
-  // Trouver les logs similaires (même type et sévérité)
+  // Trouver les logs similaires basés sur les tags communs (severity, type, attackSubtype)
   const similarLogs = allLogs
-    .filter((l) => l.id !== log.id && l.type === log.type && l.severity === log.severity)
-    .slice(0, 5);
+    .filter((l) => l.id !== log.id)
+    .map((l) => {
+      // Calculer un score de similarité basé sur les tags communs
+      let score = 0;
+      
+      // Tag severity : 3 points si identique
+      if (l.severity === log.severity) {
+        score += 3;
+      }
+      
+      // Tag type : 2 points si identique
+      if (l.type === log.type) {
+        score += 2;
+      }
+      
+      // Tag attackSubtype : 5 points si identique (le plus important)
+      if (l.attackSubtype && log.attackSubtype && l.attackSubtype === log.attackSubtype) {
+        score += 5;
+      }
+      
+      return { log: l, score };
+    })
+    .filter((item) => item.score > 0) // Ne garder que les logs avec au moins un tag commun
+    .sort((a, b) => b.score - a.score) // Trier par score décroissant
+    .slice(0, 5) // Prendre les 5 meilleurs
+    .map((item) => item.log) // Extraire uniquement les logs
+    .filter((l, index, self) => 
+      // Dédupliquer : ne garder que le premier log avec cet ID
+      index === self.findIndex((log) => log.id === l.id)
+    );
 
   const handleAddComment = () => {
     if (newComment.trim()) {
-      const comment: Comment = {
-        id: `comment-${Date.now()}`,
+      const comment = addLogComment(log.id, {
         author: 'Utilisateur',
         content: newComment,
-        timestamp: new Date(),
-      };
+      });
       setComments([...comments, comment]);
       setNewComment('');
+      // Déclencher un événement personnalisé pour synchroniser dans le même onglet
+      window.dispatchEvent(new CustomEvent('logCommentUpdated'));
     }
   };
 
@@ -194,7 +246,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve,
                 <div>
                   <p className="text-xs" style={{ color: COLORS.text.muted }}>ID du log</p>
                   <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
-                    {log.id}
+                    {formatLogId(log.id)}
                   </p>
                 </div>
               </div>
@@ -321,30 +373,95 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve,
             </h3>
             {similarLogs.length === 0 ? (
               <p className="text-sm" style={{ color: COLORS.text.muted }}>
-                Aucun ticket similaire trouvé
+                Aucune suggestion trouvée pour le moment
               </p>
             ) : (
               <div className="space-y-3">
-                {similarLogs.map((similarLog) => (
-                  <div
-                    key={similarLog.id}
-                    className="p-3 rounded-lg cursor-pointer transition-all hover:opacity-80"
-                    style={{ backgroundColor: COLORS.background.hover }}
-                  >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: getSeverityColor(similarLog.severity) }}
-                      />
-                      <span className="text-xs font-medium" style={{ color: COLORS.text.primary }}>
-                        {similarLog.id.slice(0, 8)}
-                      </span>
+                {similarLogs.map((similarLog) => {
+                  // Formater le subtype
+                  const formatSubtype = (subtype: string): string => {
+                    return subtype
+                      .replace(/_/g, ' ')
+                      .split(' ')
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .join(' ');
+                  };
+
+                  // Déterminer les tags communs
+                  const commonTags: string[] = [];
+                  if (similarLog.severity === log.severity) commonTags.push('Severity');
+                  if (similarLog.type === log.type) commonTags.push('Type');
+                  if (similarLog.attackSubtype && log.attackSubtype && similarLog.attackSubtype === log.attackSubtype) {
+                    commonTags.push('Subtype');
+                  }
+
+                  return (
+                    <div
+                      key={similarLog.id}
+                      onClick={() => navigate(`/logs/${similarLog.id}`)}
+                      className="p-3 rounded-lg cursor-pointer transition-all hover:opacity-80"
+                      style={{ backgroundColor: COLORS.background.hover }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: getSeverityColor(similarLog.severity) }}
+                          />
+                          <span className="text-xs font-medium" style={{ color: COLORS.text.primary }}>
+                            {formatLogId(similarLog.id)}
+                          </span>
+                        </div>
+                        {commonTags.length > 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ 
+                            backgroundColor: `${COLORS.accent.deepBlue}20`,
+                            color: COLORS.accent.deepBlue 
+                          }}>
+                            {commonTags.length} tag{commonTags.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center flex-wrap gap-1.5 mb-2">
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: `${getSeverityColor(similarLog.severity)}20`,
+                            color: getSeverityColor(similarLog.severity),
+                          }}
+                        >
+                          {similarLog.severity}
+                        </span>
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: COLORS.background.card,
+                            color: similarLog.type === 'Attack' ? COLORS.accent.frenchRed : COLORS.text.secondary,
+                          }}
+                        >
+                          {similarLog.type}
+                        </span>
+                        {similarLog.attackSubtype && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded"
+                            style={{
+                              backgroundColor: similarLog.type === 'Attack' 
+                                ? `${COLORS.accent.frenchRed}15` 
+                                : `${COLORS.accent.deepBlue}15`,
+                              color: similarLog.type === 'Attack' 
+                                ? COLORS.accent.frenchRed 
+                                : COLORS.accent.deepBlue,
+                            }}
+                          >
+                            {formatSubtype(similarLog.attackSubtype)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs line-clamp-2" style={{ color: COLORS.text.secondary }}>
+                        {similarLog.explanation}
+                      </p>
                     </div>
-                    <p className="text-xs line-clamp-2" style={{ color: COLORS.text.secondary }}>
-                      {similarLog.explanation}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
