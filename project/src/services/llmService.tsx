@@ -172,44 +172,6 @@ export class LLMService {
   }
 
   /**
-   * Analyser un log de sécurité avec contexte
-   * OPTIMISÉ pour éviter les timeouts
-   */
-  async analyzeSecurityLog(logData: {
-    severity: string;
-    type: string;
-    attackSubtype?: string;
-    explanation: string;
-    firewallId: string;
-  }): Promise<string> {
-    // Prompt plus concis pour réduire les tokens
-    const systemPrompt = `Expert cybersécurité. Analyse concise en français.`;
-    
-    const userPrompt = `Log: ${logData.severity} - ${logData.type}${
-      logData.attackSubtype ? ` (${logData.attackSubtype})` : ''
-    }
-Pare-feu: ${logData.firewallId}
-Détails: ${logData.explanation}
-
-Fournis en 3-4 phrases:
-1. Nature menace
-2. Impact
-3. Action recommandée`;
-
-    return this.chatCompletion(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      {
-        temperature: 0.5,
-        maxTokens: 300, // Réduit pour réponse plus rapide
-        timeout: 45000, // 45 secondes
-      }
-    );
-  }
-
-  /**
    * Répondre à une question sur un log spécifique
    * OPTIMISÉ: limite l'historique de conversation
    */
