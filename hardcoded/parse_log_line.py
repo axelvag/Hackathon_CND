@@ -2,6 +2,7 @@ import pandas as pd
 import ipaddress
 from datetime import datetime, timedelta
 
+
 BUG_INFO = {
     "corrupt_line": (
         "High",
@@ -38,6 +39,7 @@ ESSENTIAL_FIELDS = [
     "action",
     "bytes",
     "duration_ms",
+    "rule_id"
 ]
 
 
@@ -197,7 +199,6 @@ def detect_bug(row: dict, fallback_timestamp: str | None = None,
         "severity": sev,
         "explanation": expl,
         "type": "Bug",
-        "attack_type": "",
     }
 
 
