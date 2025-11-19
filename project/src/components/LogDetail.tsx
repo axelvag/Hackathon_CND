@@ -160,6 +160,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       title: 'Analyser les logs du système pour identifier la source',
       details: 'Consultez les logs système, les logs d\'application et les logs réseau pour retracer l\'origine de l\'attaque. Recherchez des patterns similaires dans les logs historiques pour déterminer si cette attaque fait partie d\'une campagne plus large. Documentez toutes les informations pertinentes pour l\'analyse forensique.',
     },
+    {
+      title: 'Isoler le système affecté du réseau principal',
+      details: 'En cas de compromission confirmée ou suspectée, isolez immédiatement le système affecté du reste du réseau pour empêcher la propagation de la menace. Utilisez le réseau de quarantaine si disponible, ou déconnectez physiquement le système. Assurez-vous de préserver les preuves pour l\'analyse ultérieure.',
+    },
+    {
+      title: 'Contacter l\'équipe de sécurité pour une analyse approfondie',
+      details: 'Si l\'attaque est de nature critique ou si vous avez besoin d\'une expertise supplémentaire, contactez immédiatement l\'équipe de sécurité informatique (SOC). Fournissez tous les détails pertinents : timestamp, source IP, type d\'attaque, et actions déjà entreprises. Une réponse coordonnée est essentielle pour gérer efficacement l\'incident.',
+    },
   ];
 
   return (
@@ -604,27 +612,6 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               <MessageSquare size={20} />
               <span>Commentaires d'avancement</span>
             </h3>
-
-            {/* Contexte du Log */}
-            <div
-              className="mb-4 p-3 rounded-lg border-l-4 flex-shrink-0"
-              style={{
-                backgroundColor: COLORS.background.hover,
-                borderLeftColor: getSeverityColor(log.severity),
-              }}
-            >
-              <p className="text-xs font-medium mb-2" style={{ color: COLORS.text.muted }}>
-                📋 Contexte du log analysé :
-              </p>
-              <div className="space-y-1 text-xs" style={{ color: COLORS.text.secondary }}>
-                <p><strong>ID:</strong> {formatLogId(log.id)}</p>
-                <p><strong>Sévérité:</strong> <span style={{ color: getSeverityColor(log.severity) }}>{log.severity}</span></p>
-                <p><strong>Type:</strong> {log.type}</p>
-                {log.attackSubtype && <p><strong>Attaque:</strong> {log.attackSubtype.replace(/_/g, ' ')}</p>}
-                <p><strong>Pare-feu:</strong> {log.firewallId}</p>
-                <p className="mt-2 italic">{log.explanation}</p>
-              </div>
-            </div>
 
             <div className="space-y-3 mb-4 flex-1 overflow-y-auto min-h-0">
               {comments.length === 0 ? (
