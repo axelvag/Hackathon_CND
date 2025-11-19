@@ -52,3 +52,10 @@ class EventAnalysis(BaseModel):
     title: str
     explanation: str
     remediation: List[RemediationStep]
+
+
+class CallRequest(BaseModel):
+    """Request model for phone call endpoint"""
+
+    to: str
+    text: str
