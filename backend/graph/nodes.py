@@ -174,7 +174,9 @@ def llm_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     unknown_results = []
     for ml_output in unknown_outputs:
         log_context = log_context_by_timestamp.get(ml_output.timestamp, {})
-        context_str = f"\n\nLog context:\n{log_context}" if log_context else ""
+        context_str = (
+            f"\n\nContexte du log :\n{log_context}" if log_context else ""
+        )
 
         prompt = ANALYZE_UNKNOWN_EVENT_PROMPT.format(
             precise_type=ml_output.precise_type, context_str=context_str
@@ -193,7 +195,7 @@ def llm_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
             result = structured_llm.invoke(
                 [HumanMessage(content=enhanced_prompt)]
             )
-            default_title = f"Security event: {ml_output.precise_type}"
+            default_title = f"Événement de sécurité : {ml_output.precise_type}"
             event_analysis = EventAnalysis(
                 precise_type=ml_output.precise_type,
                 title=getattr(result, "title", default_title),
@@ -207,7 +209,7 @@ def llm_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
             )
             event_analysis = EventAnalysis(
                 precise_type=ml_output.precise_type,
-                title=f"Security event: {ml_output.precise_type}",
+                title=f"Événement de sécurité : {ml_output.precise_type}",
                 explanation=FALLBACK_EXPLANATION_TEMPLATE.format(
                     precise_type=ml_output.precise_type
                 ),
