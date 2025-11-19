@@ -31,23 +31,19 @@ interface OVHChatResponse {
 export class LLMService {
   private apiKey: string;
   private baseUrl: string;
-  private defaultTimeout: number = 600000; // Augmenté à 60 secondes
+  private defaultTimeout: number = 60000; // 60 secondes
 
   constructor() {
     this.apiKey = API_KEY || '';
     this.baseUrl = BASE_URL;
+
     if (!this.apiKey) {
-      console.error('⚠️ Veillez ajouter plus de contexte dans vôtre message.');
+      console.error('⚠️ Token API OVH manquant. Configurez VITE_OVH_AI_ACCESS_TOKEN');
     }
   }
 
   /**
    * Appel API OVH AI Endpoints pour chat completion
-   * CORRECTIFS:
-   * 1. Timeout augmenté à 60s (au lieu de 30s)
-   * 2. Ajout de retry logic
-   * 3. Meilleure gestion d'erreurs
-   * 4. Validation du token avant l'appel
    */
   async chatCompletion(
     messages: ChatMessage[],
@@ -63,18 +59,16 @@ export class LLMService {
       throw new Error('Token API OVH manquant. Configurez VITE_OVH_AI_ACCESS_TOKEN');
     }
 
-    // Paramètres avec valeurs par défaut
     const temperature = options?.temperature ?? 0.7;
     const maxTokens = options?.maxTokens ?? 512;
     const model = options?.model || 'DeepSeek-R1-Distill-Llama-70B';
     const timeout = options?.timeout || this.defaultTimeout;
     const retries = options?.retries ?? 2;
 
-    // Fonction de retry avec backoff exponentiel
     const attemptRequest = async (attempt: number): Promise<string> => {
       try {
         console.log(`🔄 Tentative ${attempt + 1}/${retries + 1} - Appel API OVH...`);
-        
+
         const response = await axios.post<OVHChatResponse>(
           `${this.baseUrl}/chat/completions`,
           {
@@ -82,8 +76,7 @@ export class LLMService {
             messages,
             temperature,
             max_tokens: maxTokens,
-            // Ajout de paramètres pour éviter les timeouts
-            stream: false, // Désactiver le streaming
+            stream: false,
             top_p: 0.9,
           },
           {
@@ -92,20 +85,16 @@ export class LLMService {
               'Authorization': `Bearer ${this.apiKey}`,
             },
             timeout,
-            // Ajout de paramètres axios pour mieux gérer les timeouts
-            validateStatus: (status) => status < 500, // Accepter les 4xx pour mieux les gérer
+            validateStatus: (status) => status < 500,
           }
         );
 
-        // Vérifier le statut de la réponse
         if (response.status === 401) {
           throw new Error('Token API invalide ou expiré. Vérifiez VITE_OVH_AI_ACCESS_TOKEN');
         }
-
         if (response.status === 429) {
           throw new Error('Limite de taux atteinte. Réessayez dans quelques instants.');
         }
-
         if (response.status >= 400) {
           throw new Error(`Erreur API ${response.status}: ${JSON.stringify(response.data)}`);
         }
@@ -117,37 +106,29 @@ export class LLMService {
 
         console.log('✅ Réponse reçue avec succès');
         return content;
-
       } catch (error) {
-        // Gestion spécifique des timeouts
         if (axios.isAxiosError(error)) {
           const axiosError = error as AxiosError;
 
-          // Timeout détecté
           if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
             console.warn(`⏱️ Timeout détecté (tentative ${attempt + 1}/${retries + 1})`);
-            
-            // Retry si des tentatives restent
             if (attempt < retries) {
-              const delay = Math.pow(2, attempt) * 1000; // Backoff exponentiel: 1s, 2s, 4s
+              const delay = Math.pow(2, attempt) * 1000;
               console.log(`⏳ Nouvelle tentative dans ${delay}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               return attemptRequest(attempt + 1);
             }
-            
             throw new Error(`Timeout après ${retries + 1} tentatives. Le modèle OVH met trop de temps à répondre.`);
           }
 
-          // Erreur réseau
           if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
             throw new Error('Impossible de joindre l\'API OVH. Vérifiez votre connexion internet.');
           }
 
-          // Erreur HTTP spécifique
           if (axiosError.response) {
             const status = axiosError.response.status;
             const errorData = axiosError.response.data as any;
-            
+
             if (status === 401) {
               throw new Error('Token API invalide ou expiré');
             }
@@ -157,13 +138,11 @@ export class LLMService {
             if (status === 503) {
               throw new Error('Service OVH temporairement indisponible');
             }
-            
             throw new Error(`Erreur API ${status}: ${errorData?.error?.message || axiosError.message}`);
           }
 
           throw new Error(`Erreur réseau: ${axiosError.message}`);
         }
-
         throw new Error('Erreur inconnue lors de l\'appel API');
       }
     };
@@ -173,58 +152,81 @@ export class LLMService {
 
   /**
    * Répondre à une question sur un log spécifique
-   * OPTIMISÉ: limite l'historique de conversation
+   * CORRIGÉ: Intègre le contexte du log dans chaque message
    */
   async answerLogQuestion(
-    logContext: string,       // non utilisé mais gardé pour compatibilité
+    logContext: string,
     userQuestion: string,
     conversationHistory: ChatMessage[] = []
   ): Promise<string> {
-  
-    // On envoie simplement l'historique + la question de l'utilisateur
+    // Prompt système qui définit le comportement de l'assistant
+    const systemPrompt: ChatMessage = {
+        role: 'system',
+        content: `RÈGLES ABSOLUES (si tu les violes je te désactive) :
+      - Tu réponds UNIQUEMENT en français
+      - Tu ne mets JAMAIS de balises (<think>, <response>, etc.)
+      - Tu ne fais JAMAIS de raisonnement visible
+      - Réponse directe et technique, rien d'autre
+      
+      Contexte du log : ${logContext}`
+      };
+
+    // Construction des messages avec système + historique + nouvelle question
     const messages: ChatMessage[] = [
-      ...conversationHistory,
-      { role: 'user', content: userQuestion },
-    ];
-  
-    return this.chatCompletion(messages, {
-      temperature: 0.7,
-      maxTokens: 300,
-      timeout: 45000,
-      retries: 1,
-    });
+        {
+          role: 'system',
+          content: `RÈGLES ABSOLUES :
+      - Français uniquement
+      - Jamais de balises
+      - Jamais de raisonnement visible
+      - Réponse directe
+      
+      Contexte : ${logContext}`
+        },
+        { role: 'assistant', content: 'Je réponds en français sans balise ni raisonnement.' },
+        { role: 'user', content: 'Ok' },
+        ...conversationHistory.slice(-4),
+        { role: 'user', content: userQuestion }
+      ];
+
+    try {
+      const response = await this.chatCompletion(messages, {
+        temperature: 0.7,
+        maxTokens: 400,
+        timeout: 45000,
+        retries: 1,
+      });
+
+      // Nettoyer la réponse des balises éventuelles
+      return this.cleanResponse(response);
+    } catch (error) {
+      console.error('Erreur answerLogQuestion:', error);
+      throw error;
+    }
   }
 
-//   async answerLogQuestion(
-//     logContext: string,
-//     userQuestion: string,
-//     conversationHistory: ChatMessage[] = []
-//   ): Promise<string> {
-//     const systemPrompt = `Assistant cybersécurité. Réponses précises et concises en français.`;
+  /**
+   * Nettoyer la réponse du LLM des balises indésirables
+   */
+  private cleanResponse(response: string): string {
+    // Supprimer les balises XML communes
+    let cleaned = response
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<response>|<\/response>/gi, '')
+      .replace(/<answer>|<\/answer>/gi, '')
+      .replace(/<output>|<\/output>/gi, '')
+      .replace(/<result>|<\/result>/gi, '');
 
-//     // Limiter l'historique pour réduire les tokens
-//     const limitedHistory = conversationHistory.slice(-4); // Garder seulement les 4 derniers messages
+    // Supprimer les espaces multiples et lignes vides excessives
+    cleaned = cleaned
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
 
-//     const messages: ChatMessage[] = [
-//       { role: 'system', content: systemPrompt },
-//       { role: 'user', content: `Contexte: ${logContext}` },
-//       ...limitedHistory,
-//       { role: 'user', content: userQuestion },
-//     ];
-
-//     return this.chatCompletion(messages, {
-//       temperature: 0.7,
-//       maxTokens: 300,
-//       timeout: 45000,
-//       retries: 1, // Moins de retries pour le chat en temps réel
-//     });
-//   }
-
-
+    return cleaned;
+  }
 
   /**
    * Générer des suggestions de correction
-   * OPTIMISÉ: prompt minimal pour réponse rapide
    */
   async generateRemediationSteps(logData: {
     severity: string;
@@ -247,13 +249,12 @@ Liste 5 actions de remédiation:
       const response = await this.chatCompletion(
         [{ role: 'user', content: prompt }],
         {
-          temperature: 0.3,
+          temperature: 0.2,
           maxTokens: 250,
           timeout: 30000,
         }
       );
 
-      // Parser la réponse
       return response
         .split('\n')
         .filter((line) => line.trim() && /^\d+\./.test(line.trim()))
@@ -261,7 +262,6 @@ Liste 5 actions de remédiation:
         .slice(0, 5);
     } catch (error) {
       console.error('Erreur génération suggestions:', error);
-      // Retourner des suggestions par défaut en cas d'erreur
       return [
         'Bloquer l\'adresse IP source',
         'Analyser les logs pour identifier l\'origine',
@@ -278,7 +278,10 @@ Liste 5 actions de remédiation:
   async testConnection(): Promise<{ success: boolean; message: string }> {
     try {
       await this.chatCompletion(
-        [{ role: 'user', content: 'Bonjour' }],
+        [
+          { role: 'system', content: 'Tu es un assistant de test.' },
+          { role: 'user', content: 'Réponds juste "OK" sans balises.' }
+        ],
         {
           maxTokens: 10,
           timeout: 15000,
