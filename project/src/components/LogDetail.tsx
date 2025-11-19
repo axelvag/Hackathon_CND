@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
@@ -31,6 +31,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<number | null>(null);
   const [llmError, setLlmError] = useState<string | null>(null);
+  
+  // Refs pour le scroll automatique
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Couleur verte plus claire et visible pour le dark mode
   const resolvedGreen = '#10b981';
@@ -62,6 +66,20 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       window.removeEventListener('logCommentUpdated', handleCommentUpdate as EventListener);
     };
   }, [log.id]);
+
+  // Scroll automatique pour les messages du chat IA
+  useEffect(() => {
+    if (chatMessagesEndRef.current) {
+      chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isLoadingChat]);
+
+  // Scroll automatique pour les commentaires
+  useEffect(() => {
+    if (commentsEndRef.current) {
+      commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [comments]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -464,6 +482,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                   </span>
                 </div>
               )}
+              <div ref={chatMessagesEndRef} />
             </div>
             <div className="flex space-x-2 flex-shrink-0">
               <input
@@ -640,6 +659,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                   </div>
                 ))
               )}
+              <div ref={commentsEndRef} />
             </div>
             <div className="flex space-x-2 flex-shrink-0">
               <input
