@@ -28,11 +28,12 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([
-    'Chargement des suggestions...',
-  ]);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
   const [llmError, setLlmError] = useState<string | null>(null);
+
+  // Couleur verte plus claire et visible pour le dark mode
+  const resolvedGreen = '#10b981';
+  const resolvedGreenBg = isResolved ? `${resolvedGreen}25` : 'transparent';
+  const resolvedGreenBorder = isResolved ? `${resolvedGreen}60` : 'none';
 
   // Charger les commentaires depuis localStorage
   useEffect(() => {
@@ -60,50 +61,62 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     };
   }, [log.id]);
 
-  // Générer les suggestions via LLM au chargement
-  useEffect(() => {
-    const loadSuggestions = async () => {
-      setIsLoadingSuggestions(true);
-      setLlmError(null);
-      
-      try {
-        const remediationSteps = await llmService.generateRemediationSteps({
-          severity: log.severity,
-          type: log.type,
-          attackSubtype: log.attackSubtype,
-          explanation: log.explanation,
-        });
-
-        if (remediationSteps.length > 0) {
-          setSuggestions(remediationSteps);
-        } else {
-          // Fallback si pas de réponse
-          setSuggestions([
-            'Vérifier les règles du pare-feu pour bloquer cette source',
-            'Mettre à jour les signatures de détection d\'intrusion',
-            'Analyser les logs du système pour identifier la source',
-            'Isoler le système affecté du réseau principal',
-            'Contacter l\'équipe de sécurité pour une analyse approfondie',
-          ]);
-        }
-      } catch (error) {
-        console.error('Erreur LLM suggestions:', error);
-        setLlmError(error instanceof Error ? error.message : 'Erreur inconnue');
-        // Fallback en cas d'erreur
-        setSuggestions([
-          'Vérifier les règles du pare-feu pour bloquer cette source',
-          'Mettre à jour les signatures de détection d\'intrusion',
-          'Analyser les logs du système pour identifier la source',
-          'Isoler le système affecté du réseau principal',
-          'Contacter l\'équipe de sécurité pour une analyse approfondie',
-        ]);
-      } finally {
-        setIsLoadingSuggestions(false);
+  // Suggestions statiques basées sur le type de log (pas d'appel LLM pour éviter les timeouts)
+  const suggestions = (() => {
+    if (log.type === 'Attack') {
+      switch (log.attackSubtype) {
+        case 'brute_force_ssh':
+          return [
+            'Bloquer l\'adresse IP source via règle de pare-feu',
+            'Implémenter fail2ban pour bannir automatiquement les IP suspectes',
+            'Forcer l\'authentification par clé SSH au lieu de mot de passe',
+            'Limiter les tentatives de connexion à 3 par minute',
+            'Déplacer le service SSH sur un port non-standard',
+          ];
+        case 'malware_download':
+          return [
+            'Isoler immédiatement la machine du réseau',
+            'Lancer un scan antivirus complet avec mise à jour des signatures',
+            'Analyser le fichier téléchargé avec VirusTotal ou similaire',
+            'Vérifier les connexions réseau sortantes suspectes',
+            'Restaurer depuis une sauvegarde saine si compromis confirmé',
+          ];
+        case 'xss':
+          return [
+            'Valider et encoder toutes les entrées utilisateur',
+            'Implémenter Content Security Policy (CSP) stricte',
+            'Utiliser des bibliothèques de sanitization (DOMPurify)',
+            'Mettre à jour le framework web à la dernière version',
+            'Former les développeurs aux bonnes pratiques de sécurité',
+          ];
+        case 'port_scan':
+          return [
+            'Configurer le pare-feu pour bloquer les scans de ports',
+            'Implémenter rate limiting sur les connexions',
+            'Utiliser un IDS/IPS pour détecter les patterns de scan',
+            'Réduire la surface d\'attaque en fermant les ports inutilisés',
+            'Logger et surveiller les tentatives de scan répétées',
+          ];
+        default:
+          return [
+            'Analyser les logs pour identifier la source de l\'attaque',
+            'Bloquer l\'IP source via le pare-feu',
+            'Mettre à jour les règles de détection d\'intrusion',
+            'Vérifier l\'intégrité des systèmes affectés',
+            'Documenter l\'incident pour analyse post-mortem',
+          ];
       }
-    };
-
-    loadSuggestions();
-  }, [log.id, log.severity, log.type, log.attackSubtype, log.explanation]);
+    } else {
+      // Type: Bug
+      return [
+        'Vérifier la configuration du pare-feu pour corriger l\'erreur',
+        'Analyser les logs système pour identifier la cause racine',
+        'Mettre à jour le firmware du pare-feu si disponible',
+        'Redémarrer le service de logging pour réinitialiser',
+        'Contacter le support technique si l\'erreur persiste',
+      ];
+    }
+  })();
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -188,7 +201,15 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
   };
 
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6 transition-all duration-500 ease-in-out rounded-lg p-6"
+      style={{
+        backgroundColor: resolvedGreenBg,
+        border: isResolved 
+          ? `2px solid ${resolvedGreenBorder}` 
+          : 'none',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -206,10 +227,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </button>
         <div className="flex items-center space-x-2">
           {isResolved ? (
-            <div
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg"
-              style={{ backgroundColor: `${COLORS.success}20`, color: COLORS.success }}
-            >
+            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg" style={{ backgroundColor: `${resolvedGreen}30`, color: resolvedGreen }}>
               <CheckCircle2 size={18} />
               <span className="text-sm font-medium">Résolu</span>
             </div>
@@ -241,11 +259,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           <div className="flex items-center space-x-2">
             <AlertTriangle size={16} style={{ color: COLORS.severity.high }} />
             <p className="text-sm font-medium" style={{ color: COLORS.severity.high }}>
-              Erreur LLM
+              Erreur de connexion au LLM
             </p>
           </div>
           <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
             {llmError}
+          </p>
+          <p className="text-xs mt-2" style={{ color: COLORS.text.muted }}>
+            💡 Vérifiez que VITE_OVH_AI_ACCESS_TOKEN est configuré dans votre fichier .env
           </p>
         </div>
       )}
@@ -255,12 +276,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         <div className="lg:col-span-2 space-y-6">
           {/* Informations principales */}
           <div
-            className="rounded-lg p-6 border"
+            className="rounded-lg p-6 border transition-all duration-500"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
               borderLeftWidth: '4px',
-              borderLeftColor: getSeverityColor(log.severity),
+              borderLeftColor: isResolved 
+                ? resolvedGreen 
+                : getSeverityColor(log.severity),
             }}
           >
             <div className="flex items-start justify-between mb-4">
@@ -312,9 +335,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               <div className="flex items-center space-x-2">
                 <Shield size={16} style={{ color: COLORS.accent.deepBlue }} />
                 <div>
-                  <p className="text-xs" style={{ color: COLORS.text.muted }}>
-                    Pare-feu
-                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text.muted }}>Pare-feu</p>
                   <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
                     {log.firewallId}
                   </p>
@@ -323,9 +344,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               <div className="flex items-center space-x-2">
                 <AlertTriangle size={16} style={{ color: COLORS.text.muted }} />
                 <div>
-                  <p className="text-xs" style={{ color: COLORS.text.muted }}>
-                    ID du log
-                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text.muted }}>ID du log</p>
                   <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
                     {formatLogId(log.id)}
                   </p>
@@ -334,7 +353,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             </div>
           </div>
 
-          {/* Suggestions de correction (générées par LLM) */}
+          {/* Suggestions de correction (statiques, basées sur le type d'attaque) */}
           <div
             className="rounded-lg p-6 border"
             style={{
@@ -342,19 +361,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold" style={{ color: COLORS.text.primary }}>
-                Suggestions de correction
-              </h3>
-              {isLoadingSuggestions && (
-                <Loader2 size={16} className="animate-spin" style={{ color: COLORS.accent.deepBlue }} />
-              )}
-            </div>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
+              Suggestions de correction
+            </h3>
             <ul className="space-y-2">
               {suggestions.map((suggestion, index) => (
                 <li
                   key={index}
-                  className="flex items-start space-x-3 p-3 rounded-lg"
+                  className="flex items-start space-x-3 p-3 rounded-lg transition-all hover:bg-opacity-80"
                   style={{ backgroundColor: COLORS.background.hover }}
                 >
                   <div
@@ -382,10 +396,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <h3
-              className="text-lg font-semibold mb-4 flex items-center space-x-2"
-              style={{ color: COLORS.text.primary }}
-            >
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
               <MessageSquare size={20} />
               <span>Commentaires d'avancement</span>
             </h3>
@@ -471,18 +482,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                     return subtype
                       .replace(/_/g, ' ')
                       .split(' ')
-                      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                       .join(' ');
                   };
 
                   const commonTags: string[] = [];
                   if (similarLog.severity === log.severity) commonTags.push('Severity');
                   if (similarLog.type === log.type) commonTags.push('Type');
-                  if (
-                    similarLog.attackSubtype &&
-                    log.attackSubtype &&
-                    similarLog.attackSubtype === log.attackSubtype
-                  ) {
+                  if (similarLog.attackSubtype && log.attackSubtype && similarLog.attackSubtype === log.attackSubtype) {
                     commonTags.push('Subtype');
                   }
 
@@ -504,13 +511,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           </span>
                         </div>
                         {commonTags.length > 0 && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded"
-                            style={{
-                              backgroundColor: `${COLORS.accent.deepBlue}20`,
-                              color: COLORS.accent.deepBlue,
-                            }}
-                          >
+                          <span className="text-xs px-2 py-0.5 rounded" style={{ 
+                            backgroundColor: `${COLORS.accent.deepBlue}20`,
+                            color: COLORS.accent.deepBlue 
+                          }}>
                             {commonTags.length} tag{commonTags.length > 1 ? 's' : ''}
                           </span>
                         )}
@@ -529,10 +533,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           className="text-xs px-1.5 py-0.5 rounded"
                           style={{
                             backgroundColor: COLORS.background.card,
-                            color:
-                              similarLog.type === 'Attack'
-                                ? COLORS.accent.frenchRed
-                                : COLORS.text.secondary,
+                            color: similarLog.type === 'Attack' ? COLORS.accent.frenchRed : COLORS.text.secondary,
                           }}
                         >
                           {similarLog.type}
@@ -541,14 +542,12 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           <span
                             className="text-xs px-1.5 py-0.5 rounded"
                             style={{
-                              backgroundColor:
-                                similarLog.type === 'Attack'
-                                  ? `${COLORS.accent.frenchRed}15`
-                                  : `${COLORS.accent.deepBlue}15`,
-                              color:
-                                similarLog.type === 'Attack'
-                                  ? COLORS.accent.frenchRed
-                                  : COLORS.accent.deepBlue,
+                              backgroundColor: similarLog.type === 'Attack' 
+                                ? `${COLORS.accent.frenchRed}15` 
+                                : `${COLORS.accent.deepBlue}15`,
+                              color: similarLog.type === 'Attack' 
+                                ? COLORS.accent.frenchRed 
+                                : COLORS.accent.deepBlue,
                             }}
                           >
                             {formatSubtype(similarLog.attackSubtype)}
@@ -573,18 +572,71 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <h3
-              className="text-lg font-semibold mb-4 flex items-center space-x-2"
-              style={{ color: COLORS.text.primary }}
-            >
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
               <Bot size={20} />
-              <span>Assistant IA</span>
+              <span>Assistant IA OVH</span>
             </h3>
+
+            {/* Contexte du Log */}
+            <div
+              className="mb-4 p-3 rounded-lg border-l-4"
+              style={{
+                backgroundColor: COLORS.background.hover,
+                borderLeftColor: getSeverityColor(log.severity),
+              }}
+            >
+              <p className="text-xs font-medium mb-2" style={{ color: COLORS.text.muted }}>
+                📋 Contexte du log analysé :
+              </p>
+              <div className="space-y-1 text-xs" style={{ color: COLORS.text.secondary }}>
+                <p><strong>ID:</strong> {formatLogId(log.id)}</p>
+                <p><strong>Sévérité:</strong> <span style={{ color: getSeverityColor(log.severity) }}>{log.severity}</span></p>
+                <p><strong>Type:</strong> {log.type}</p>
+                {log.attackSubtype && <p><strong>Attaque:</strong> {log.attackSubtype.replace(/_/g, ' ')}</p>}
+                <p><strong>Pare-feu:</strong> {log.firewallId}</p>
+                <p className="mt-2 italic">{log.explanation}</p>
+              </div>
+            </div>
+
             <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
               {chatMessages.length === 0 ? (
-                <p className="text-sm text-center py-4" style={{ color: COLORS.text.muted }}>
-                  Posez une question sur ce log
-                </p>
+                <div className="text-center py-4">
+                  <p className="text-sm mb-3" style={{ color: COLORS.text.muted }}>
+                    Posez une question sur ce log à l'IA
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <button
+                      onClick={() => setChatInput("Comment corriger ce problème ?")}
+                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: `${COLORS.accent.deepBlue}20`,
+                        color: COLORS.accent.deepBlue,
+                      }}
+                    >
+                      💡 Comment corriger ?
+                    </button>
+                    <button
+                      onClick={() => setChatInput("Quelle est la gravité réelle ?")}
+                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: `${COLORS.accent.deepBlue}20`,
+                        color: COLORS.accent.deepBlue,
+                      }}
+                    >
+                      ⚠️ Gravité réelle ?
+                    </button>
+                    <button
+                      onClick={() => setChatInput("Quels sont les indicateurs de compromission ?")}
+                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: `${COLORS.accent.deepBlue}20`,
+                        color: COLORS.accent.deepBlue,
+                      }}
+                    >
+                      🔍 IOC ?
+                    </button>
+                  </div>
+                </div>
               ) : (
                 chatMessages.map((msg, index) => (
                   <div
@@ -632,7 +684,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                 <div className="flex items-center space-x-2">
                   <Loader2 size={16} className="animate-spin" style={{ color: COLORS.accent.deepBlue }} />
                   <span className="text-sm" style={{ color: COLORS.text.muted }}>
-                    L'IA réfléchit...
+                    L'IA analyse le contexte...
                   </span>
                 </div>
               )}
