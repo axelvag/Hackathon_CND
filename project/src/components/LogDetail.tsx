@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2 } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
 import { COLORS } from '../constants/theme';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { loadLogComments, addLogComment, LogComment } from '../utils/storage';
+import { llmService } from '../services/llmService';
 
 interface LogDetailProps {
   log: SecurityLog;
@@ -15,20 +16,29 @@ interface LogDetailProps {
   onDismiss: () => void;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve }: LogDetailProps) {
   const navigate = useNavigate();
   const [comments, setComments] = useState<LogComment[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([
+    'Chargement des suggestions...',
+  ]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
+  const [llmError, setLlmError] = useState<string | null>(null);
 
   // Charger les commentaires depuis localStorage
   useEffect(() => {
     const loadedComments = loadLogComments(log.id);
     setComments(loadedComments);
 
-    // Écouter les changements de localStorage (pour synchronisation entre onglets)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'cyberdefense_log_comments') {
         const loadedComments = loadLogComments(log.id);
@@ -36,7 +46,6 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       }
     };
 
-    // Écouter les événements personnalisés pour synchronisation dans le même onglet
     const handleCommentUpdate = () => {
       const loadedComments = loadLogComments(log.id);
       setComments(loadedComments);
@@ -51,6 +60,51 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     };
   }, [log.id]);
 
+  // Générer les suggestions via LLM au chargement
+  useEffect(() => {
+    const loadSuggestions = async () => {
+      setIsLoadingSuggestions(true);
+      setLlmError(null);
+      
+      try {
+        const remediationSteps = await llmService.generateRemediationSteps({
+          severity: log.severity,
+          type: log.type,
+          attackSubtype: log.attackSubtype,
+          explanation: log.explanation,
+        });
+
+        if (remediationSteps.length > 0) {
+          setSuggestions(remediationSteps);
+        } else {
+          // Fallback si pas de réponse
+          setSuggestions([
+            'Vérifier les règles du pare-feu pour bloquer cette source',
+            'Mettre à jour les signatures de détection d\'intrusion',
+            'Analyser les logs du système pour identifier la source',
+            'Isoler le système affecté du réseau principal',
+            'Contacter l\'équipe de sécurité pour une analyse approfondie',
+          ]);
+        }
+      } catch (error) {
+        console.error('Erreur LLM suggestions:', error);
+        setLlmError(error instanceof Error ? error.message : 'Erreur inconnue');
+        // Fallback en cas d'erreur
+        setSuggestions([
+          'Vérifier les règles du pare-feu pour bloquer cette source',
+          'Mettre à jour les signatures de détection d\'intrusion',
+          'Analyser les logs du système pour identifier la source',
+          'Isoler le système affecté du réseau principal',
+          'Contacter l\'équipe de sécurité pour une analyse approfondie',
+        ]);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    };
+
+    loadSuggestions();
+  }, [log.id, log.severity, log.type, log.attackSubtype, log.explanation]);
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'High':
@@ -64,38 +118,20 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     }
   };
 
-  // Trouver les logs similaires basés sur les tags communs (severity, type, attackSubtype)
   const similarLogs = allLogs
     .filter((l) => l.id !== log.id)
     .map((l) => {
-      // Calculer un score de similarité basé sur les tags communs
       let score = 0;
-      
-      // Tag severity : 3 points si identique
-      if (l.severity === log.severity) {
-        score += 3;
-      }
-      
-      // Tag type : 2 points si identique
-      if (l.type === log.type) {
-        score += 2;
-      }
-      
-      // Tag attackSubtype : 5 points si identique (le plus important)
-      if (l.attackSubtype && log.attackSubtype && l.attackSubtype === log.attackSubtype) {
-        score += 5;
-      }
-      
+      if (l.severity === log.severity) score += 3;
+      if (l.type === log.type) score += 2;
+      if (l.attackSubtype && log.attackSubtype && l.attackSubtype === log.attackSubtype) score += 5;
       return { log: l, score };
     })
-    .filter((item) => item.score > 0) // Ne garder que les logs avec au moins un tag commun
-    .sort((a, b) => b.score - a.score) // Trier par score décroissant
-    .slice(0, 5) // Prendre les 5 meilleurs
-    .map((item) => item.log) // Extraire uniquement les logs
-    .filter((l, index, self) => 
-      // Dédupliquer : ne garder que le premier log avec cet ID
-      index === self.findIndex((log) => log.id === l.id)
-    );
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((item) => item.log)
+    .filter((l, index, self) => index === self.findIndex((log) => log.id === l.id));
 
   const handleAddComment = () => {
     if (newComment.trim()) {
@@ -105,50 +141,54 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       });
       setComments([...comments, comment]);
       setNewComment('');
-      // Déclencher un événement personnalisé pour synchroniser dans le même onglet
       window.dispatchEvent(new CustomEvent('logCommentUpdated'));
     }
   };
 
   const handleChatSubmit = async () => {
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || isLoadingChat) return;
 
     const userMessage = chatInput;
-    setChatMessages([...chatMessages, { role: 'user', content: userMessage }]);
+    const newUserMessage: ChatMessage = { role: 'user', content: userMessage };
+    
+    setChatMessages((prev) => [...prev, newUserMessage]);
     setChatInput('');
     setIsLoadingChat(true);
+    setLlmError(null);
 
-    // Simulation d'une réponse LLM (remplacer par un vrai appel API)
-    setTimeout(() => {
-      const response = `Basé sur l'analyse du log "${log.explanation}", je peux vous aider à comprendre cette menace. ${userMessage.toLowerCase().includes('correction') ? 'Pour corriger ce problème, je recommande de vérifier les règles du pare-feu et de mettre à jour les signatures de détection.' : 'Pouvez-vous préciser votre question ?'}`;
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: response }]);
+    try {
+      // Construire le contexte du log
+      const logContext = `Log ${log.id} - Sévérité: ${log.severity}, Type: ${log.type}${
+        log.attackSubtype ? `, Attaque: ${log.attackSubtype}` : ''
+      }. Explication: ${log.explanation}`;
+
+      // Appeler l'API OVH réelle
+      const response = await llmService.answerLogQuestion(
+        logContext,
+        userMessage,
+        chatMessages
+      );
+
+      const assistantMessage: ChatMessage = { role: 'assistant', content: response };
+      setChatMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Erreur LLM chat:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur de connexion au LLM';
+      setLlmError(errorMessage);
+      
+      // Message d'erreur pour l'utilisateur
+      const errorResponse: ChatMessage = {
+        role: 'assistant',
+        content: `❌ Erreur: ${errorMessage}. Vérifiez votre configuration API.`,
+      };
+      setChatMessages((prev) => [...prev, errorResponse]);
+    } finally {
       setIsLoadingChat(false);
-    }, 1000);
+    }
   };
 
-  const suggestions = [
-    'Vérifier les règles du pare-feu pour bloquer cette source',
-    'Mettre à jour les signatures de détection d\'intrusion',
-    'Analyser les logs du système pour identifier la source',
-    'Isoler le système affecté du réseau principal',
-    'Contacter l\'équipe de sécurité pour une analyse approfondie',
-  ];
-
-  // Couleur verte plus claire et visible pour le dark mode
-  const resolvedGreen = '#10b981'; // Vert emerald plus clair et visible
-  const resolvedGreenBg = isResolved ? `${resolvedGreen}25` : 'transparent';
-  const resolvedGreenBorder = isResolved ? `${resolvedGreen}60` : 'none';
-
   return (
-    <div 
-      className="space-y-6 transition-all duration-500 ease-in-out rounded-lg p-6"
-      style={{
-        backgroundColor: resolvedGreenBg,
-        border: isResolved 
-          ? `2px solid ${resolvedGreenBorder}` 
-          : 'none',
-      }}
-    >
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -166,7 +206,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </button>
         <div className="flex items-center space-x-2">
           {isResolved ? (
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg" style={{ backgroundColor: `${resolvedGreen}30`, color: resolvedGreen }}>
+            <div
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg"
+              style={{ backgroundColor: `${COLORS.success}20`, color: COLORS.success }}
+            >
               <CheckCircle2 size={18} />
               <span className="text-sm font-medium">Résolu</span>
             </div>
@@ -186,19 +229,38 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </div>
       </div>
 
+      {/* Afficher erreur LLM si présente */}
+      {llmError && (
+        <div
+          className="rounded-lg p-4 border-l-4"
+          style={{
+            backgroundColor: `${COLORS.severity.high}10`,
+            borderLeftColor: COLORS.severity.high,
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <AlertTriangle size={16} style={{ color: COLORS.severity.high }} />
+            <p className="text-sm font-medium" style={{ color: COLORS.severity.high }}>
+              Erreur LLM
+            </p>
+          </div>
+          <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+            {llmError}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Colonne principale */}
         <div className="lg:col-span-2 space-y-6">
           {/* Informations principales */}
           <div
-            className="rounded-lg p-6 border transition-all duration-500"
+            className="rounded-lg p-6 border"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
               borderLeftWidth: '4px',
-              borderLeftColor: isResolved 
-                ? resolvedGreen 
-                : getSeverityColor(log.severity),
+              borderLeftColor: getSeverityColor(log.severity),
             }}
           >
             <div className="flex items-start justify-between mb-4">
@@ -250,7 +312,9 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               <div className="flex items-center space-x-2">
                 <Shield size={16} style={{ color: COLORS.accent.deepBlue }} />
                 <div>
-                  <p className="text-xs" style={{ color: COLORS.text.muted }}>Pare-feu</p>
+                  <p className="text-xs" style={{ color: COLORS.text.muted }}>
+                    Pare-feu
+                  </p>
                   <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
                     {log.firewallId}
                   </p>
@@ -259,7 +323,9 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               <div className="flex items-center space-x-2">
                 <AlertTriangle size={16} style={{ color: COLORS.text.muted }} />
                 <div>
-                  <p className="text-xs" style={{ color: COLORS.text.muted }}>ID du log</p>
+                  <p className="text-xs" style={{ color: COLORS.text.muted }}>
+                    ID du log
+                  </p>
                   <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
                     {formatLogId(log.id)}
                   </p>
@@ -268,7 +334,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             </div>
           </div>
 
-          {/* Suggestions de correction */}
+          {/* Suggestions de correction (générées par LLM) */}
           <div
             className="rounded-lg p-6 border"
             style={{
@@ -276,9 +342,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
-              Suggestions de correction
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold" style={{ color: COLORS.text.primary }}>
+                Suggestions de correction
+              </h3>
+              {isLoadingSuggestions && (
+                <Loader2 size={16} className="animate-spin" style={{ color: COLORS.accent.deepBlue }} />
+              )}
+            </div>
             <ul className="space-y-2">
               {suggestions.map((suggestion, index) => (
                 <li
@@ -311,7 +382,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
+            <h3
+              className="text-lg font-semibold mb-4 flex items-center space-x-2"
+              style={{ color: COLORS.text.primary }}
+            >
               <MessageSquare size={20} />
               <span>Commentaires d'avancement</span>
             </h3>
@@ -393,20 +467,22 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             ) : (
               <div className="space-y-3">
                 {similarLogs.map((similarLog) => {
-                  // Formater le subtype
                   const formatSubtype = (subtype: string): string => {
                     return subtype
                       .replace(/_/g, ' ')
                       .split(' ')
-                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                       .join(' ');
                   };
 
-                  // Déterminer les tags communs
                   const commonTags: string[] = [];
                   if (similarLog.severity === log.severity) commonTags.push('Severity');
                   if (similarLog.type === log.type) commonTags.push('Type');
-                  if (similarLog.attackSubtype && log.attackSubtype && similarLog.attackSubtype === log.attackSubtype) {
+                  if (
+                    similarLog.attackSubtype &&
+                    log.attackSubtype &&
+                    similarLog.attackSubtype === log.attackSubtype
+                  ) {
                     commonTags.push('Subtype');
                   }
 
@@ -428,10 +504,13 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           </span>
                         </div>
                         {commonTags.length > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded" style={{ 
-                            backgroundColor: `${COLORS.accent.deepBlue}20`,
-                            color: COLORS.accent.deepBlue 
-                          }}>
+                          <span
+                            className="text-xs px-2 py-0.5 rounded"
+                            style={{
+                              backgroundColor: `${COLORS.accent.deepBlue}20`,
+                              color: COLORS.accent.deepBlue,
+                            }}
+                          >
                             {commonTags.length} tag{commonTags.length > 1 ? 's' : ''}
                           </span>
                         )}
@@ -450,7 +529,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           className="text-xs px-1.5 py-0.5 rounded"
                           style={{
                             backgroundColor: COLORS.background.card,
-                            color: similarLog.type === 'Attack' ? COLORS.accent.frenchRed : COLORS.text.secondary,
+                            color:
+                              similarLog.type === 'Attack'
+                                ? COLORS.accent.frenchRed
+                                : COLORS.text.secondary,
                           }}
                         >
                           {similarLog.type}
@@ -459,12 +541,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                           <span
                             className="text-xs px-1.5 py-0.5 rounded"
                             style={{
-                              backgroundColor: similarLog.type === 'Attack' 
-                                ? `${COLORS.accent.frenchRed}15` 
-                                : `${COLORS.accent.deepBlue}15`,
-                              color: similarLog.type === 'Attack' 
-                                ? COLORS.accent.frenchRed 
-                                : COLORS.accent.deepBlue,
+                              backgroundColor:
+                                similarLog.type === 'Attack'
+                                  ? `${COLORS.accent.frenchRed}15`
+                                  : `${COLORS.accent.deepBlue}15`,
+                              color:
+                                similarLog.type === 'Attack'
+                                  ? COLORS.accent.frenchRed
+                                  : COLORS.accent.deepBlue,
                             }}
                           >
                             {formatSubtype(similarLog.attackSubtype)}
@@ -481,7 +565,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             )}
           </div>
 
-          {/* Chat avec LLM */}
+          {/* Chat avec LLM (API OVH réelle) */}
           <div
             className="rounded-lg p-6 border"
             style={{
@@ -489,7 +573,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
+            <h3
+              className="text-lg font-semibold mb-4 flex items-center space-x-2"
+              style={{ color: COLORS.text.primary }}
+            >
               <Bot size={20} />
               <span>Assistant IA</span>
             </h3>
@@ -525,7 +612,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                         color: msg.role === 'user' ? '#fff' : COLORS.text.secondary,
                       }}
                     >
-                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     </div>
                     {msg.role === 'user' && (
                       <div
@@ -543,9 +630,9 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               )}
               {isLoadingChat && (
                 <div className="flex items-center space-x-2">
-                  <Bot size={16} style={{ color: COLORS.accent.deepBlue }} />
+                  <Loader2 size={16} className="animate-spin" style={{ color: COLORS.accent.deepBlue }} />
                   <span className="text-sm" style={{ color: COLORS.text.muted }}>
-                    En train de réfléchir...
+                    L'IA réfléchit...
                   </span>
                 </div>
               )}
@@ -574,7 +661,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                   color: '#fff',
                 }}
               >
-                <Send size={16} />
+                {isLoadingChat ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
           </div>
@@ -583,4 +670,3 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     </div>
   );
 }
-
