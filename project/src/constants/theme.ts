@@ -6,7 +6,7 @@ export const COLORS = {
     hover: '#1A1F2E',
   },
   accent: {
-    deepBlue: '#1E3A5F',
+    deepBlue: '#4A90E2',
     darkBlue: '#2C4A6B',
     frenchRed: '#CE1126',
     frenchBlue: '#002395',
