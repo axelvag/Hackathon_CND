@@ -6,6 +6,8 @@ import { useColors } from '../contexts/ThemeContext';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { loadLogComments, addLogComment, LogComment, loadLogChatMessages, saveLogChatMessages, ChatMessage } from '../utils/storage';
 import { llmService } from '../services/llmService';
+import { TutorialButton, Tutorial } from './Tutorial';
+
 
 interface LogDetailProps {
   log: SecurityLog;
@@ -26,6 +28,25 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<number | null>(null);
   const [llmError, setLlmError] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+  
+  const tutorialSteps = [
+    {
+      target: 'suggestions-correction',
+      text: 'Toutes les étapes pour se protéger contre l\'attaque ou le bug',
+      position: 'right' as const
+    },
+    {
+      target: 'assistant-ia',
+      text: 'Un chatbot pour vous aider dans la compréhension de la résolution',
+      position: 'top' as const
+    },
+    {
+      target: 'marquer-resolu',
+      text: 'Une fois le problème corrigé, vous pouvez clôturer le ticket 🙂',
+      position: 'bottom' as const
+    }
+  ];
   
   // Refs pour le scroll automatique
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -225,6 +246,13 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         overflow: 'hidden',
       }}
     >
+      {showTutorial && (
+        <Tutorial 
+          steps={tutorialSteps} 
+          onComplete={() => setShowTutorial(false)} 
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0 mb-6">
         <button
@@ -241,8 +269,13 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           <span className="text-sm font-medium">Retour</span>
         </button>
         <div className="flex items-center space-x-2">
+          <TutorialButton onStart={() => setShowTutorial(true)} />
           {isResolved ? (
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg" style={{ backgroundColor: `${resolvedGreen}30`, color: resolvedGreen }}>
+            <div 
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg" 
+              style={{ backgroundColor: `${resolvedGreen}30`, color: resolvedGreen }}
+              data-tutorial="marquer-resolu"
+            >
               <CheckCircle2 size={18} />
               <span className="text-sm font-medium">Résolu</span>
             </div>
@@ -254,6 +287,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                 backgroundColor: `${COLORS.success}20`,
                 color: COLORS.success,
               }}
+              data-tutorial="marquer-resolu"
             >
               <CheckCircle2 size={18} />
               <span className="text-sm font-medium">Marquer comme résolu</span>
@@ -445,6 +479,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
             }}
+            data-tutorial="assistant-ia"
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2 flex-shrink-0" style={{ color: COLORS.text.primary }}>
               <Bot size={20} />
