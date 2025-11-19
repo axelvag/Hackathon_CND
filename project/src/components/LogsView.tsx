@@ -1,5 +1,5 @@
-import { Filter, Search, Trash2 } from 'lucide-react';
-import { SecurityLog, SeverityLevel } from '../types';
+import { Search, Trash2, X } from 'lucide-react';
+import { SecurityLog, SeverityLevel, LogType } from '../types';
 import { COLORS } from '../constants/theme';
 import LogCard from './LogCard';
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -18,16 +18,37 @@ export default function LogsView({
   logs, 
   resolvedLogs, 
   dismissedLogs, 
-  onResolveLog, 
   onDismissLog,
   onClearAllLogs
 }: LogsViewProps) {
   const navigate = useNavigate();
   const [filterSeverity, setFilterSeverity] = useState<SeverityLevel | 'All'>('All');
+  const [filterType, setFilterType] = useState<LogType | 'All'>('All');
+  const [filterSubtype, setFilterSubtype] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [enteringLogs, setEnteringLogs] = useState<Set<string>>(new Set());
   const previousLogsRef = useRef<Set<string>>(new Set());
   const isInitialMountRef = useRef(true);
+
+  // Extraire tous les subtypes uniques disponibles dans les logs
+  const availableSubtypes = useMemo(() => {
+    const subtypes = new Set<string>();
+    logs.forEach(log => {
+      if (log.attackSubtype) {
+        subtypes.add(log.attackSubtype);
+      }
+    });
+    return Array.from(subtypes).sort();
+  }, [logs]);
+
+  // Fonction pour formater le subtype pour l'affichage
+  const formatSubtype = (subtype: string): string => {
+    return subtype
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
@@ -35,14 +56,35 @@ export default function LogsView({
       if (dismissedLogs.has(log.id.toString())) return false;
       
       const matchesSeverity = filterSeverity === 'All' || log.severity === filterSeverity;
+      const matchesType = filterType === 'All' || log.type === filterType;
+      const matchesSubtype = filterSubtype === 'All' || log.attackSubtype === filterSubtype;
       const matchesSearch =
         searchTerm === '' ||
         log.explanation.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.firewallId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.attackSubtype?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSeverity && matchesSearch;
+      
+      return matchesSeverity && matchesType && matchesSubtype && matchesSearch;
     });
-  }, [logs, filterSeverity, searchTerm, dismissedLogs]);
+  }, [logs, filterSeverity, filterType, filterSubtype, searchTerm, dismissedLogs]);
+
+  // Réinitialiser le filtre subtype si le type change et que le subtype n'est plus valide
+  useEffect(() => {
+    if (filterSubtype !== 'All' && !availableSubtypes.includes(filterSubtype)) {
+      setFilterSubtype('All');
+    }
+  }, [filterType, availableSubtypes, filterSubtype]);
+
+  // Fonction pour réinitialiser tous les filtres
+  const resetFilters = () => {
+    setFilterSeverity('All');
+    setFilterType('All');
+    setFilterSubtype('All');
+    setSearchTerm('');
+  };
+
+  // Vérifier si des filtres sont actifs
+  const hasActiveFilters = filterSeverity !== 'All' || filterType !== 'All' || filterSubtype !== 'All' || searchTerm !== '';
 
   const sortedLogs = useMemo(() => {
     return [...filteredLogs].sort((a, b) => {
@@ -98,10 +140,6 @@ export default function LogsView({
     }
   }, [sortedLogs]);
 
-  const handleLogClick = (log: SecurityLog) => {
-    navigate(`/logs/${log.id}`);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -115,8 +153,10 @@ export default function LogsView({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
+      {/* Barre de recherche et filtres */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+        {/* Barre de recherche */}
+        <div className="flex-1 relative w-full lg:w-auto">
           <Search
             size={18}
             className="absolute left-3 top-1/2 transform -translate-y-1/2"
@@ -136,26 +176,105 @@ export default function LogsView({
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Filter size={18} style={{ color: COLORS.text.muted }} />
-          <select
-            value={filterSeverity}
-            onChange={(e) => setFilterSeverity(e.target.value as SeverityLevel | 'All')}
-            className="px-4 py-2.5 rounded-lg border outline-none transition-all text-sm font-medium"
-            style={{
-              backgroundColor: COLORS.background.card,
-              borderColor: COLORS.border,
-              color: COLORS.text.primary,
-            }}
-          >
-            <option value="All">Toutes les priorités</option>
-            <option value="High">Critique</option>
-            <option value="Medium">Moyenne</option>
-            <option value="Low">Faible</option>
-          </select>
+        {/* Filtres à droite */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* Filtre par Sévérité */}
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-medium whitespace-nowrap" style={{ color: COLORS.text.muted }}>
+              Priorité:
+            </label>
+            <select
+              value={filterSeverity}
+              onChange={(e) => setFilterSeverity(e.target.value as SeverityLevel | 'All')}
+              className="px-3 py-2 rounded-lg border outline-none transition-all text-sm font-medium"
+              style={{
+                backgroundColor: COLORS.background.card,
+                borderColor: filterSeverity !== 'All' 
+                  ? COLORS.severity[filterSeverity.toLowerCase() as 'high' | 'medium' | 'low']
+                  : COLORS.border,
+                color: COLORS.text.primary,
+              }}
+            >
+              <option value="All">Toutes</option>
+              <option value="High">Critique</option>
+              <option value="Medium">Moyenne</option>
+              <option value="Low">Faible</option>
+            </select>
+          </div>
+
+          {/* Filtre par Type */}
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-medium whitespace-nowrap" style={{ color: COLORS.text.muted }}>
+              Type:
+            </label>
+            <select
+              value={filterType}
+              onChange={(e) => {
+                setFilterType(e.target.value as LogType | 'All');
+                // Réinitialiser le subtype quand on change de type
+                setFilterSubtype('All');
+              }}
+              className="px-3 py-2 rounded-lg border outline-none transition-all text-sm font-medium"
+              style={{
+                backgroundColor: COLORS.background.card,
+                borderColor: filterType !== 'All' 
+                  ? (filterType === 'Attack' ? COLORS.accent.frenchRed : COLORS.text.secondary)
+                  : COLORS.border,
+                color: COLORS.text.primary,
+              }}
+            >
+              <option value="All">Tous</option>
+              <option value="Attack">Attaque</option>
+              <option value="Bug">Bug</option>
+            </select>
+          </div>
+
+          {/* Filtre par Subtype */}
+          {availableSubtypes.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <label className="text-xs font-medium whitespace-nowrap" style={{ color: COLORS.text.muted }}>
+                Sous-type:
+              </label>
+              <select
+                value={filterSubtype}
+                onChange={(e) => setFilterSubtype(e.target.value)}
+                className="px-3 py-2 rounded-lg border outline-none transition-all text-sm font-medium"
+                style={{
+                  backgroundColor: COLORS.background.card,
+                  borderColor: filterSubtype !== 'All' ? COLORS.accent.deepBlue : COLORS.border,
+                  color: COLORS.text.primary,
+                }}
+              >
+                <option value="All">Tous</option>
+                {availableSubtypes.map((subtype) => (
+                  <option key={subtype} value={subtype}>
+                    {formatSubtype(subtype)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Bouton réinitialiser */}
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center space-x-1 px-2 py-2 rounded text-xs hover:opacity-80 transition-all whitespace-nowrap"
+              style={{
+                backgroundColor: COLORS.background.hover,
+                color: COLORS.text.muted,
+              }}
+              title="Réinitialiser tous les filtres"
+            >
+              <X size={12} />
+              <span>Réinitialiser</span>
+            </button>
+          )}
+
+          {/* Bouton effacer */}
           <button
             onClick={onClearAllLogs}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-lg border outline-none transition-all text-sm font-medium hover:opacity-80"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-lg border outline-none transition-all text-sm font-medium hover:opacity-80 whitespace-nowrap"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.severity.high,
