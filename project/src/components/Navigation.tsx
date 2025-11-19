@@ -1,20 +1,30 @@
+import { Link, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, FileText, AlertTriangle, Settings, BarChart3 } from 'lucide-react';
 import { COLORS } from '../constants/theme';
 import logo from '../Ministère_des_Armées_et_des_Anciens_Combattants.webp';
 
 interface NavigationProps {
   activeSection: string;
-  onSectionChange: (section: string) => void;
 }
 
-export default function Navigation({ activeSection, onSectionChange }: NavigationProps) {
+export default function Navigation({ activeSection }: NavigationProps) {
+  const location = useLocation();
+  
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'statistics', label: 'Statistiques', icon: BarChart3 },
-    { id: 'threats', label: 'Firewall', icon: AlertTriangle },
-    { id: 'logs', label: 'Logs', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { id: 'statistics', label: 'Statistiques', icon: BarChart3, path: '/statistics' },
+    { id: 'threats', label: 'Firewall', icon: AlertTriangle, path: '/threats' },
+    { id: 'logs', label: 'Logs', icon: FileText, path: '/logs' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   ];
+  
+  // Déterminer si un item est actif basé sur le chemin
+  const isItemActive = (itemPath: string) => {
+    if (itemPath === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(itemPath);
+  };
 
   return (
     <nav
@@ -68,20 +78,21 @@ export default function Navigation({ activeSection, onSectionChange }: Navigatio
             <div className="flex items-center space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeSection === item.id;
+                const isActive = isItemActive(item.path);
                 return (
-                  <button
+                  <Link
                     key={item.id}
-                    onClick={() => onSectionChange(item.id)}
+                    to={item.path}
                     className="flex items-center space-x-2 px-4 py-2 rounded-md transition-all"
                     style={{
                       backgroundColor: isActive ? COLORS.background.hover : 'transparent',
                       color: isActive ? COLORS.text.primary : COLORS.text.secondary,
+                      textDecoration: 'none',
                     }}
                   >
                     <Icon size={18} />
                     <span className="text-sm font-medium">{item.label}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </div>

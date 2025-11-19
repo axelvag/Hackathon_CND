@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, Shield, AlertCircle, X } from 'lucide-react';
-import { SecurityLog } from '../types';
+import { SecurityLog, formatLogId } from '../types';
 import { COLORS } from '../constants/theme';
 import { formatRelativeTime } from '../utils/timeUtils';
 
@@ -36,6 +36,15 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
     }
   };
 
+  // Formater le subtype (remplacer les underscores et capitaliser)
+  const formatSubtype = (subtype: string): string => {
+    return subtype
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <div
       className="rounded-lg p-4 border transition-all hover:border-opacity-50 relative cursor-pointer"
@@ -63,7 +72,8 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
         </button>
       )}
       <div className="flex items-start justify-between mb-3 pr-6">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Tag Severity */}
           <div
             className="px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wide"
             style={{
@@ -73,6 +83,7 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
           >
             {log.severity}
           </div>
+          {/* Tag Type */}
           <div
             className="px-2.5 py-1 rounded text-xs font-medium"
             style={{
@@ -82,15 +93,20 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
           >
             {log.type}
           </div>
+          {/* Tag Attack Type / Bug Type */}
           {log.attackSubtype && (
             <div
               className="px-2.5 py-1 rounded text-xs font-medium"
               style={{
-                backgroundColor: `${COLORS.accent.frenchRed}15`,
-                color: COLORS.accent.frenchRed,
+                backgroundColor: log.type === 'Attack' 
+                  ? `${COLORS.accent.frenchRed}15` 
+                  : `${COLORS.accent.deepBlue}15`,
+                color: log.type === 'Attack' 
+                  ? COLORS.accent.frenchRed 
+                  : COLORS.accent.deepBlue,
               }}
             >
-              {log.attackSubtype}
+              {formatSubtype(log.attackSubtype)}
             </div>
           )}
         </div>
@@ -121,7 +137,7 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
         </div>
         <div className="flex items-center space-x-1.5" style={{ color: COLORS.text.muted }}>
           <AlertCircle size={12} />
-          <span className="text-xs">ID: {log.id.slice(0, 8)}</span>
+          <span className="text-xs">ID: {formatLogId(log.id)}</span>
         </div>
       </div>
     </div>
