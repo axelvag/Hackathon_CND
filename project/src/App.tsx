@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Routes, Route, useLocation, Navigate, Link, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useParams } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import LogsView from './components/LogsView';
@@ -25,19 +25,9 @@ const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secon
 const LOG_GENERATION_MAX_DELAY = 8; // Délai maximum entre chaque log (en secondes)
 
 function App() {
-  const location = useLocation();
   const [logs, setLogs] = useState<SecurityLog[]>([]);
   const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(new Set());
   const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(new Set());
-  
-  // Déterminer la section active basée sur l'URL
-  const activeSection = useMemo(() => {
-    const path = location.pathname;
-    if (path.startsWith('/logs')) return 'logs';
-    if (path.startsWith('/threats')) return 'threats';
-    if (path.startsWith('/settings')) return 'settings';
-    return 'dashboard';
-  }, [location.pathname]);
 
   // Charger les logs depuis localStorage
   useEffect(() => {
@@ -210,7 +200,7 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.background.primary }}>
-      <Navigation activeSection={activeSection} />
+      <Navigation />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Routes>
@@ -249,25 +239,6 @@ function App() {
           <Route 
             path="/threats" 
             element={<Firewall totalLogs={activeLogs.length} />} 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <div
-                className="rounded-lg p-12 border text-center"
-                style={{
-                  backgroundColor: COLORS.background.card,
-                  borderColor: COLORS.border,
-                }}
-              >
-                <h2 className="text-xl font-semibold mb-2" style={{ color: COLORS.text.primary }}>
-                  Configuration Système
-                </h2>
-                <p className="text-sm" style={{ color: COLORS.text.secondary }}>
-                  Paramètres de sécurité et administration
-                </p>
-              </div>
-            } 
           />
           <Route path="/statistics" element={<Statistics logs={activeLogs} totalLogs={activeLogs.length} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,21 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, FileText, AlertTriangle, Settings, BarChart3 } from 'lucide-react';
+import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3 } from 'lucide-react';
 import { COLORS } from '../constants/theme';
 import logo from '../Ministère_des_Armées_et_des_Anciens_Combattants.webp';
 
-interface NavigationProps {
-  activeSection: string;
-}
-
-export default function Navigation({ activeSection }: NavigationProps) {
+export default function Navigation() {
   const location = useLocation();
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+    { id: 'logs', label: 'Logs', icon: FileText, path: '/logs' },
     { id: 'statistics', label: 'Statistiques', icon: BarChart3, path: '/statistics' },
     { id: 'threats', label: 'Firewall', icon: AlertTriangle, path: '/threats' },
-    { id: 'logs', label: 'Logs', icon: FileText, path: '/logs' },
-    { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   ];
   
   // Déterminer si un item est actif basé sur le chemin
