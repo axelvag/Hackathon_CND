@@ -1,90 +1,156 @@
 import { SecurityLog, SeverityLevel, LogType } from '../types';
 
-const attackSubtypes = [
-  'DDoS',
-  'SQL Injection',
-  'XSS',
-  'Brute Force',
-  'Port Scanning',
-  'Ransomware',
-  'Phishing',
-  'Man-in-the-Middle',
+// Dataset basé sur le fichier CSV fourni
+interface CSVLogRow {
+  firewall_id: string;
+  timestamp: string;
+  bug_type: string;
+  severity: SeverityLevel;
+  explanation: string;
+  type: LogType;
+  attack_type: string;
+}
+
+// Données extraites du CSV
+const csvData: CSVLogRow[] = [
+  // Bugs
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:00:07Z', bug_type: 'malformed_timestamp', severity: 'High', explanation: 'Timestamp invalide — tri temporel impossible.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:00:25Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:00:41Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:00:59Z', bug_type: 'nonnumeric_port', severity: 'Medium', explanation: 'Port non numérique — empêche mapping service/port.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:01:10Z', bug_type: 'nonnumeric_port', severity: 'Medium', explanation: 'Port non numérique — empêche mapping service/port.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:01:22Z', bug_type: 'missing_field', severity: 'Low', explanation: 'Champ manquant — perte d\'information contextuelle.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:01:39Z', bug_type: 'missing_field', severity: 'Low', explanation: 'Champ manquant — perte d\'information contextuelle.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:01:40Z', bug_type: 'negative_bytes', severity: 'Medium', explanation: 'Octets négatifs — incohérence de comptage.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:02:02Z', bug_type: 'nonnumeric_port', severity: 'Medium', explanation: 'Port non numérique — empêche mapping service/port.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:02:09Z', bug_type: 'missing_field', severity: 'Low', explanation: 'Champ manquant — perte d\'information contextuelle.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:02:13Z', bug_type: 'missing_field', severity: 'Low', explanation: 'Champ manquant — perte d\'information contextuelle.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:02:19Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:02:25Z', bug_type: 'invalid_ip', severity: 'High', explanation: 'IP invalide — données corrompues ou erronées.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:02:36Z', bug_type: 'missing_field', severity: 'Low', explanation: 'Champ manquant — perte d\'information contextuelle.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:02:37Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:02:55Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:03:06Z', bug_type: 'duplicate_fields', severity: 'Low', explanation: 'Champs dupliqués — peut provoquer ambiguïté de parsing.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:03:09Z', bug_type: 'malformed_timestamp', severity: 'High', explanation: 'Timestamp invalide — tri temporel impossible.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:03:23Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:03:31Z', bug_type: 'corrupt_line', severity: 'High', explanation: 'Ligne corrompue — impossible à parser correctement.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:03:42Z', bug_type: 'invalid_ip', severity: 'High', explanation: 'IP invalide — données corrompues ou erronées.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:03:45Z', bug_type: 'nonnumeric_port', severity: 'Medium', explanation: 'Port non numérique — empêche mapping service/port.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:03:55Z', bug_type: 'malformed_timestamp', severity: 'High', explanation: 'Timestamp invalide — tri temporel impossible.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:04:18Z', bug_type: 'malformed_timestamp', severity: 'High', explanation: 'Timestamp invalide — tri temporel impossible.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-01T00:04:52Z', bug_type: 'negative_bytes', severity: 'Medium', explanation: 'Octets négatifs — incohérence de comptage.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:04:54Z', bug_type: 'malformed_timestamp', severity: 'High', explanation: 'Timestamp invalide — tri temporel impossible.', type: 'Bug', attack_type: '' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-01T00:05:16Z', bug_type: 'invalid_ip', severity: 'High', explanation: 'IP invalide — données corrompues ou erronées.', type: 'Bug', attack_type: '' },
+  // Attacks - je vais inclure un échantillon représentatif, le reste sera généré aléatoirement depuis le dataset
+  { firewall_id: 'FW-B', timestamp: '2025-04-07T10:39:22Z', bug_type: '', severity: 'Medium', explanation: 'Scan de ports — activité de reconnaissance.', type: 'Attack', attack_type: 'port_scan' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-07T10:39:23Z', bug_type: '', severity: 'High', explanation: 'Brute-force SSH — tentative de compromission de comptes.', type: 'Attack', attack_type: 'brute_force_ssh' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-07T10:39:37Z', bug_type: '', severity: 'Medium', explanation: 'Tentative XSS — attaque applicative visant scripts côté client.', type: 'Attack', attack_type: 'xss' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-07T10:39:44Z', bug_type: '', severity: 'Medium', explanation: 'Tentative XSS — attaque applicative visant scripts côté client.', type: 'Attack', attack_type: 'xss' },
+  { firewall_id: 'FW-B', timestamp: '2025-04-07T10:39:46Z', bug_type: '', severity: 'High', explanation: 'Téléchargement malveillant — risque d\'infection.', type: 'Attack', attack_type: 'malware_download' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-07T10:44:05Z', bug_type: '', severity: 'High', explanation: 'Tentative d\'injection SQL — attaque applicative critique.', type: 'Attack', attack_type: 'sql_injection' },
+  { firewall_id: 'FW-A', timestamp: '2025-04-07T10:43:02Z', bug_type: '', severity: 'High', explanation: 'Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.', type: 'Attack', attack_type: 'ddos' },
 ];
 
-const explanations = {
-  High: [
-    'Tentative d\'intrusion détectée sur le serveur principal avec exploitation de vulnérabilité CVE-2024-1234',
-    'Attaque DDoS massive identifiée - 45000 requêtes/seconde en provenance de 127 adresses IP distinctes',
-    'Injection SQL réussie détectée sur la base de données critique - accès non autorisé aux tables sensibles',
-    'Ransomware en cours d\'exécution détecté - chiffrement de fichiers systèmes critiques en cours',
-    'Exfiltration de données sensibles détectée vers serveur externe non autorisé (2.3 GB transférés)',
-  ],
-  Medium: [
-    'Scan de ports détecté sur infrastructure réseau - analyse de 1024 ports depuis IP suspecte',
-    'Tentative de force brute sur comptes administrateurs - 847 tentatives en 15 minutes',
-    'Accès répété aux ressources sensibles avec credentials invalides - possible reconnaissance',
-    'Activité suspecte détectée - multiples requêtes anormales depuis zone géographique inhabituelle',
-    'Violation de politique de sécurité - transfert de fichiers non chiffrés sur réseau externe',
-  ],
-  Low: [
-    'Échec d\'authentification légitime - utilisateur a oublié son mot de passe (3 tentatives)',
-    'Tentative de connexion depuis nouvel appareil nécessitant validation secondaire',
-    'Alerte de configuration mineure - certificat SSL proche de l\'expiration (14 jours)',
-    'Mise à jour de sécurité disponible pour composant non-critique du système',
-    'Activité inhabituelle de faible priorité détectée - analyse comportementale en cours',
-  ],
-};
+// Types d'attaques disponibles dans le dataset
+const attackTypes = ['port_scan', 'brute_force_ssh', 'xss', 'malware_download', 'sql_injection', 'ddos'];
 
-const firewalls = [
-  'FW-PARIS-01',
-  'FW-LYON-02',
-  'FW-MARSEILLE-03',
-  'FW-TOULOUSE-04',
-  'FW-BORDEAUX-05',
-  'FW-STRASBOURG-06',
-  'FW-DMZ-01',
-  'FW-DMZ-02',
-  'FW-CORE-01',
-  'FW-EDGE-01',
-  'FW-BACKUP-01',
-  'FW-CLOUD-01',
-];
+// Firewalls disponibles
+const firewalls = ['FW-A', 'FW-B'];
 
+// Fonction pour convertir une ligne CSV en SecurityLog
+function csvRowToLog(row: CSVLogRow, id: number): SecurityLog {
+  const log: SecurityLog = {
+    id: id, // Stocker uniquement le nombre
+    timestamp: new Date(row.timestamp),
+    firewallId: row.firewall_id,
+    severity: row.severity,
+    explanation: row.explanation,
+    type: row.type,
+  };
+
+  // Ajouter le subtype selon le type
+  if (row.type === 'Attack' && row.attack_type) {
+    log.attackSubtype = row.attack_type;
+  } else if (row.type === 'Bug' && row.bug_type) {
+    // Pour les bugs, on utilise attackSubtype pour stocker bug_type
+    log.attackSubtype = row.bug_type;
+  }
+
+  return log;
+}
+
+// Fonction pour obtenir un élément aléatoire d'un tableau
 function randomItem<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function generateLog(id: number): SecurityLog {
-  const severities: SeverityLevel[] = ['High', 'Medium', 'Low'];
-  const weights = [0.15, 0.35, 0.5];
-
-  const random = Math.random();
-  let severity: SeverityLevel;
-  if (random < weights[0]) {
-    severity = 'High';
-  } else if (random < weights[0] + weights[1]) {
-    severity = 'Medium';
+// Fonction pour générer un log basé sur le dataset
+function generateLogFromDataset(id: number, useCurrentTime: boolean = false): SecurityLog {
+  // Choisir aléatoirement une ligne du dataset comme base
+  const baseRow = randomItem(csvData);
+  
+  // Créer un log basé sur cette ligne
+  const log = csvRowToLog(baseRow, id);
+  
+  // Si on veut utiliser le temps actuel (pour les nouveaux logs)
+  if (useCurrentTime) {
+    log.timestamp = new Date();
   } else {
-    severity = 'Low';
+    // Sinon, utiliser le timestamp du dataset mais avec une variation aléatoire
+    const baseTime = new Date(baseRow.timestamp);
+    const variation = Math.random() * 24 * 60 * 60 * 1000; // Variation de 0 à 24h
+    log.timestamp = new Date(baseTime.getTime() - variation);
   }
 
-  const type: LogType = Math.random() > 0.3 ? 'Attack' : 'Bug';
-  const attackSubtype = type === 'Attack' && severity !== 'Low' ? randomItem(attackSubtypes) : undefined;
+  // Parfois varier le firewall aléatoirement
+  if (Math.random() > 0.7) {
+    log.firewallId = randomItem(firewalls);
+  }
 
-  const now = new Date();
-  const timestamp = new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000);
+  // Pour les attaques, parfois varier le type d'attaque
+  if (log.type === 'Attack' && Math.random() > 0.5) {
+    log.attackSubtype = randomItem(attackTypes);
+    // Mettre à jour l'explication selon le type d'attaque
+    const attackExplanations: Record<string, string> = {
+      'port_scan': 'Scan de ports — activité de reconnaissance.',
+      'brute_force_ssh': 'Brute-force SSH — tentative de compromission de comptes.',
+      'xss': 'Tentative XSS — attaque applicative visant scripts côté client.',
+      'malware_download': 'Téléchargement malveillant — risque d\'infection.',
+      'sql_injection': 'Tentative d\'injection SQL — attaque applicative critique.',
+      'ddos': 'Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.',
+    };
+    log.explanation = attackExplanations[log.attackSubtype] || log.explanation;
+    
+    // Ajuster la sévérité selon le type d'attaque
+    if (['brute_force_ssh', 'sql_injection', 'ddos', 'malware_download'].includes(log.attackSubtype)) {
+      log.severity = 'High';
+    } else {
+      log.severity = 'Medium';
+    }
+  }
 
-  return {
-    id: `LOG-${String(id).padStart(8, '0')}`,
-    timestamp,
-    firewallId: randomItem(firewalls),
-    severity,
-    explanation: randomItem(explanations[severity]),
-    type,
-    attackSubtype,
-  };
+  // Pour les bugs, s'assurer que bug_type est préservé (déjà fait dans csvRowToLog)
+  // Si on veut varier, on peut le faire ici
+
+  return log;
 }
 
+/**
+ * Génère des logs mockup basés sur le dataset CSV
+ */
 export function generateMockLogs(count: number): SecurityLog[] {
-  return Array.from({ length: count }, (_, i) => generateLog(i + 1));
+  return Array.from({ length: count }, (_, i) => generateLogFromDataset(i + 1));
+}
+
+/**
+ * Génère un nouveau log avec un ID incrémental
+ * Le log aura un timestamp actuel pour apparaître comme le plus récent
+ */
+export function generateNewLog(getNextId: () => number): SecurityLog {
+  // Utiliser un ID incrémental
+  const nextId = getNextId();
+  const log = generateLogFromDataset(nextId, true);
+  // S'assurer que le timestamp est actuel pour les nouveaux logs
+  log.timestamp = new Date();
+  return log;
 }
