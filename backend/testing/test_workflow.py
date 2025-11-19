@@ -102,6 +102,24 @@ sample_logs = [
         "status": "OK",
         "flags": "PSH",
     },
+    {
+        "timestamp": "2025-01-15T10:36:00Z",
+        "firewall_id": "FW-C",
+        "src_ip": "192.168.5.5",
+        "dst_ip": "172.16.0.10",
+        "src_port": 1337,
+        "dst_port": 8080,
+        "protocol": "UDP",
+        "action": "DROP",
+        "bytes": 777,
+        "duration_ms": 10,
+        "rule_id": "rule-007",
+        "session_id": "session-007",
+        # Unknown attack - not in REASON_ATTACK_INFO
+        "reason": "Zero-day exploit attempt",
+        "status": "BLOCKED",
+        "flags": "RST",
+    },
 ]
 
 
@@ -115,7 +133,6 @@ def test_workflow():
     # Initialize workflow state
     initial_state = {
         "log_lines": sample_logs,
-        "ml_outputs": [],
         "known_outputs": [],
         "unknown_outputs": [],
         "results": [],

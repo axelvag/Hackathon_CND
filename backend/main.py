@@ -4,16 +4,15 @@ FastAPI application with LangGraph workflow endpoint
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Any
-from constants.schemas import WorkflowResponse
+from constants.schemas import WorkflowResponse, LogAnalysisRequest
+from constants.config import API_HOST, API_PORT
 from graph.workflow import workflow
 
 app = FastAPI(title="Firewall Log Analysis API", version="1.0.0")
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,25 +20,21 @@ app.add_middleware(
 
 
 @app.post("/analyze-logs", response_model=WorkflowResponse)
-async def analyze_logs(log_lines: List[Dict[str, Any]]) -> WorkflowResponse:
+async def analyze_logs(request: LogAnalysisRequest) -> WorkflowResponse:
     """
     Analyze firewall logs through ML model and LLM agent workflow
 
     Args:
-        log_lines: JSON array of firewall log lines
+        request: LogAnalysisRequest containing list of firewall log entries
 
     Returns:
         WorkflowResponse with list of EventInfo objects
     """
-    if not log_lines:
-        raise HTTPException(
-            status_code=400, detail="log_lines cannot be empty"
-        )
-
     try:
+        log_lines = [log_line.model_dump() for log_line in request.log_lines]
+
         initial_state = {
             "log_lines": log_lines,
-            "ml_outputs": [],
             "known_outputs": [],
             "unknown_outputs": [],
             "results": [],
@@ -66,4 +61,4 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=API_HOST, port=API_PORT)

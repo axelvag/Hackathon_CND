@@ -22,7 +22,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["constants", "graph", "testing"]
+packages = ["constants", "graph", "testing", "dataset_labeling"]
 
 [tool.ruff]
 line-length = 79
