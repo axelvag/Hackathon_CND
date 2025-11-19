@@ -41,7 +41,7 @@ def route_decision(state: WorkflowState) -> List[str]:
         routes.append("llm_agent")
 
     # If no routes, go directly to merge (which will just return empty results)
-    return routes if routes else ["merge_results"]
+    return routes
 
 
 def create_workflow() -> StateGraph:
@@ -62,8 +62,14 @@ def create_workflow() -> StateGraph:
     workflow.add_edge("ml_model", "decision")
 
     # Conditional edge from decision - routes to parallel execution
-    # LangGraph will execute all returned nodes in parallel
-    workflow.add_conditional_edges("decision", route_decision)
+    workflow.add_conditional_edges(
+        "decision",
+        route_decision,
+        {
+            "known_lookup": "known_lookup",
+            "llm_agent": "llm_agent",
+        }
+    )
 
     # Both known_lookup and llm_agent converge to merge_results
     workflow.add_edge("known_lookup", "merge_results")

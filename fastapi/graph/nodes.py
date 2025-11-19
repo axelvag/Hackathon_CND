@@ -139,9 +139,7 @@ def llm_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     for ml_output in unknown_outputs:
         # Get log context if available
         log_context = log_context_by_timestamp.get(ml_output.timestamp, {})
-        context_str = (
-            f"\n\nLog context:\n{log_context}" if log_context else ""
-        )
+        context_str = f"\n\nLog context:\n{log_context}" if log_context else ""
 
         # Build prompt
         prompt = ANALYZE_UNKNOWN_EVENT_PROMPT.format(
