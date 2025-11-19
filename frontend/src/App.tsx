@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, Link, useParams } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
@@ -7,6 +7,7 @@ import Firewall from './components/Firewall';
 import LogDetail from './components/LogDetail';
 import { generateNewLog } from './utils/mockData';
 import Statistics from './components/Statistics';
+import Settings from './components/Settings';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { getColors } from './constants/theme';
 import { SeverityStats, SecurityLog } from './types';
@@ -18,8 +19,12 @@ import {
   saveDismissedLogs,
   getNextLogId,
   clearAllLogs,
-  STORAGE_KEYS
+  STORAGE_KEYS,
+  loadPhoneNumber,
+  loadNotificationsEnabled
 } from './utils/storage';
+import { callService } from './services/callService';
+import { ViewProvider } from './contexts/ViewContext';
 
 // Configuration de la vitesse d'apparition des logs (en secondes)
 const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
@@ -60,6 +65,9 @@ function AppContent() {
   const [logs, setLogs] = useState<SecurityLog[]>(initialLogs);
   const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(initialState.resolvedLogs);
   const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(initialState.dismissedLogs);
+  
+  // Référence pour stocker les intervalles d'appels téléphoniques par log ID
+  const callIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Charger les logs depuis localStorage (pour synchronisation entre onglets)
   useEffect(() => {
@@ -155,6 +163,53 @@ function AppContent() {
         return updatedLogs;
       });
 
+      // Vérifier si on doit déclencher des appels téléphoniques périodiques
+      // Si le log est HIGH et que les notifications sont activées
+      if (newLog.severity === 'High') {
+        const notificationsEnabled = loadNotificationsEnabled();
+        const phoneNumber = loadPhoneNumber();
+        
+        if (notificationsEnabled && phoneNumber) {
+          // Déclencher le premier appel immédiatement
+          callService.triggerCall(phoneNumber, newLog).catch((error) => {
+            console.error('Erreur lors du déclenchement de l\'appel téléphonique:', error);
+          });
+          
+          // Démarrer les appels périodiques toutes les 15 à 30 secondes
+          const startPeriodicCalls = () => {
+            const getRandomDelay = () => {
+              const minDelay = 15000; // 15 secondes
+              const maxDelay = 30000; // 30 secondes
+              return Math.random() * (maxDelay - minDelay) + minDelay;
+            };
+            
+            const scheduleNextCall = () => {
+              const interval = setTimeout(() => {
+                // Vérifier que les notifications sont toujours activées et que le log existe toujours
+                const stillEnabled = loadNotificationsEnabled();
+                const stillPhoneNumber = loadPhoneNumber();
+                
+                if (stillEnabled && stillPhoneNumber) {
+                  callService.triggerCall(stillPhoneNumber, newLog).catch((error) => {
+                    console.error('Erreur lors du déclenchement de l\'appel téléphonique périodique:', error);
+                  });
+                  scheduleNextCall(); // Planifier le prochain appel
+                } else {
+                  // Arrêter si les notifications sont désactivées
+                  callIntervalsRef.current.delete(newLog.id);
+                }
+              }, getRandomDelay());
+              
+              callIntervalsRef.current.set(newLog.id, interval);
+            };
+            
+            scheduleNextCall();
+          };
+          
+          startPeriodicCalls();
+        }
+      }
+
       // Planifier le prochain log avec un délai aléatoire
       if (isActive) {
         const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
@@ -190,6 +245,12 @@ function AppContent() {
       newSet.add(logId.toString());
       return newSet;
     });
+    // Arrêter les appels téléphoniques périodiques pour ce log
+    const interval = callIntervalsRef.current.get(logId);
+    if (interval) {
+      clearTimeout(interval);
+      callIntervalsRef.current.delete(logId);
+    }
   };
 
   // Fonction pour gérer le dismiss d'un log
@@ -199,6 +260,12 @@ function AppContent() {
       newSet.add(logId.toString());
       return newSet;
     });
+    // Arrêter les appels téléphoniques périodiques pour ce log
+    const interval = callIntervalsRef.current.get(logId);
+    if (interval) {
+      clearTimeout(interval);
+      callIntervalsRef.current.delete(logId);
+    }
   };
 
   // Fonction pour effacer tous les logs
@@ -273,6 +340,7 @@ function AppContent() {
             element={<Firewall totalLogs={activeLogs.length} />} 
           />
           <Route path="/statistics" element={<Statistics logs={activeLogs} totalLogs={activeLogs.length} />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -347,7 +415,9 @@ function LogDetailRoute({
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ViewProvider>
+        <AppContent />
+      </ViewProvider>
     </ThemeProvider>
   );
 }

@@ -4,9 +4,10 @@ FastAPI application with LangGraph workflow endpoint
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from constants.schemas import WorkflowResponse, LogAnalysisRequest
+from constants.schemas import WorkflowResponse, LogAnalysisRequest, CallRequest
 from constants.config import API_HOST, API_PORT
 from graph.workflow import workflow
+from phone.call import send_call
 
 app = FastAPI(title="Firewall Log Analysis API", version="1.0.0")
 
@@ -56,6 +57,12 @@ async def analyze_logs(request: LogAnalysisRequest) -> WorkflowResponse:
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+@app.post("/call")
+async def call(request: CallRequest):
+    """Call endpoint - receives JSON with 'to' and 'text' fields"""
+    return send_call(request.to, "12345678901", request.text)
 
 
 if __name__ == "__main__":

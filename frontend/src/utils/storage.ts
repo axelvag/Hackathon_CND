@@ -7,7 +7,12 @@ export const STORAGE_KEYS = {
   LOG_COMMENTS: 'cyberdefense_log_comments',
   LOG_CHAT_MESSAGES: 'cyberdefense_log_chat_messages',
   LAST_LOG_ID: 'cyberdefense_last_log_id',
+  PHONE_NUMBER: 'cyberdefense_phone_number',
+  NOTIFICATIONS_ENABLED: 'cyberdefense_notifications_enabled',
+  VIEW_MODE: 'cyberdefense_view_mode',
 } as const;
+
+export type ViewMode = 'technician' | 'expert';
 
 export interface LogComment {
   logId: number; // ID numérique du log
@@ -300,6 +305,82 @@ export function clearAllLogs(): void {
     localStorage.removeItem(STORAGE_KEYS.LAST_LOG_ID);
   } catch (error) {
     console.error('Error clearing all logs:', error);
+  }
+}
+
+/**
+ * Charge le numéro de téléphone depuis le localStorage
+ */
+export function loadPhoneNumber(): string | null {
+  try {
+    const phoneNumber = localStorage.getItem(STORAGE_KEYS.PHONE_NUMBER);
+    return phoneNumber || null;
+  } catch (error) {
+    console.error('Error loading phone number from localStorage:', error);
+    return null;
+  }
+}
+
+/**
+ * Sauvegarde le numéro de téléphone dans le localStorage
+ */
+export function savePhoneNumber(phoneNumber: string | null): void {
+  try {
+    if (phoneNumber) {
+      localStorage.setItem(STORAGE_KEYS.PHONE_NUMBER, phoneNumber);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.PHONE_NUMBER);
+    }
+  } catch (error) {
+    console.error('Error saving phone number to localStorage:', error);
+  }
+}
+
+/**
+ * Charge l'état des notifications depuis le localStorage
+ */
+export function loadNotificationsEnabled(): boolean {
+  try {
+    const enabled = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED);
+    return enabled === 'true';
+  } catch (error) {
+    console.error('Error loading notifications enabled from localStorage:', error);
+    return false;
+  }
+}
+
+/**
+ * Sauvegarde l'état des notifications dans le localStorage
+ */
+export function saveNotificationsEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED, enabled.toString());
+  } catch (error) {
+    console.error('Error saving notifications enabled to localStorage:', error);
+  }
+}
+
+/**
+ * Charge le mode de vue depuis le localStorage
+ */
+export function loadViewMode(): ViewMode {
+  try {
+    const mode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
+    return (mode === 'expert' || mode === 'technician') ? mode : 'technician';
+  } catch (error) {
+    console.error('Error loading view mode from localStorage:', error);
+    return 'technician';
+  }
+}
+
+/**
+ * Sauvegarde le mode de vue dans le localStorage
+ */
+export function saveViewMode(mode: ViewMode): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode);
+  } catch (error) {
+    console.error('Error saving view mode to localStorage:', error);
   }
 }
 

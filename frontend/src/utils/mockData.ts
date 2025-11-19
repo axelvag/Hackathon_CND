@@ -84,6 +84,19 @@ function randomItem<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
+// Générer des valeurs aléatoires pour les métadonnées réseau
+function generateRandomIp(): string {
+  return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+}
+
+function generateRandomPort(): number {
+  return Math.floor(Math.random() * 65535) + 1024;
+}
+
+function generateSessionId(): string {
+  return Array.from({ length: 12 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join('');
+}
+
 // Fonction pour générer un log basé sur le dataset
 function generateLogFromDataset(id: number, useCurrentTime: boolean = false): SecurityLog {
   // Choisir aléatoirement une ligne du dataset comme base
@@ -128,6 +141,26 @@ function generateLogFromDataset(id: number, useCurrentTime: boolean = false): Se
       log.severity = 'Medium';
     }
   }
+
+  // Générer les métadonnées des logs bruts
+  const protocols = ['TCP', 'UDP', 'ICMP', 'HTTPS'];
+  const actions = ['ALLOW', 'DENY', 'DROP'];
+  const statuses = ['OK', 'FAILED', 'BLOCKED'];
+  const flagsList = ['SYN', 'RST', 'FIN', 'ACK', ''];
+  
+  log.srcIp = generateRandomIp();
+  log.dstIp = generateRandomIp();
+  log.srcPort = generateRandomPort();
+  log.dstPort = generateRandomPort();
+  log.protocol = randomItem(protocols);
+  log.action = randomItem(actions);
+  log.bytes = Math.floor(Math.random() * 10000) + 100;
+  log.durationMs = Math.floor(Math.random() * 1000);
+  log.ruleId = `R${Math.floor(Math.random() * 200)}`;
+  log.sessionId = generateSessionId();
+  log.user = Math.random() > 0.7 ? ['dana', 'admin', 'system', 'user'][Math.floor(Math.random() * 4)] : undefined;
+  log.status = randomItem(statuses);
+  log.flags = randomItem(flagsList);
 
   // Pour les bugs, s'assurer que bug_type est préservé (déjà fait dans csvRowToLog)
   // Si on veut varier, on peut le faire ici

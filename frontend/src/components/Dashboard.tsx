@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { SeverityStats, SecurityLog } from '../types';
 import { useColors } from '../contexts/ThemeContext';
 import LogCard from './LogCard';
+import { TutorialButton, Tutorial } from './Tutorial';
 
 interface DashboardProps {
   stats: SeverityStats;
@@ -15,6 +16,20 @@ interface DashboardProps {
 export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: DashboardProps) {
   const COLORS = useColors();
   const navigate = useNavigate();
+  const [showTutorial, setShowTutorial] = useState(false);
+  
+  const tutorialSteps = [
+    {
+      target: 'derniers-logs',
+      text: 'Ici apparaissent les Attaques et Bug reçu sur les Firewall en temps réel.',
+      position: 'top' as const
+    },
+    {
+      target: 'nav-logs',
+      text: 'Pour accéder à l\'ensembles des logs malvaillants reçu et les filtrer.',
+      position: 'bottom' as const
+    }
+  ];
   
   // Trier les logs par timestamp (plus récents en premier) et prendre les 3 derniers
   const lastThreeLogs = useMemo(() => {
@@ -69,6 +84,7 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
       previousLogsRef.current = currentLogIds;
     }
   }, [lastThreeLogs]);
+  
   const StatCard = ({
     label,
     value,
@@ -123,13 +139,23 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: COLORS.text.primary }}>
-          Vue d'Ensemble
-        </h2>
-        <p className="text-sm" style={{ color: COLORS.text.secondary }}>
-          Surveillance en temps réel des menaces et événements de sécurité
-        </p>
+      {showTutorial && (
+        <Tutorial 
+          steps={tutorialSteps} 
+          onComplete={() => setShowTutorial(false)} 
+        />
+      )}
+      
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: COLORS.text.primary }}>
+            Vue d'Ensemble
+          </h2>
+          <p className="text-sm" style={{ color: COLORS.text.secondary }}>
+            Surveillance en temps réel des menaces et événements de sécurité
+          </p>
+        </div>
+        <TutorialButton onStart={() => setShowTutorial(true)} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -159,6 +185,7 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
           backgroundColor: COLORS.background.card,
           borderColor: COLORS.border,
         }}
+        data-tutorial="derniers-logs"
       >
         <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
           Derniers Logs
