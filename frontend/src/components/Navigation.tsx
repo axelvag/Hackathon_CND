@@ -9,10 +9,10 @@ export default function Navigation() {
   const COLORS = getColors(theme);
   
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { id: 'logs', label: 'Logs', icon: FileText, path: '/logs' },
-    { id: 'statistics', label: 'Statistiques', icon: BarChart3, path: '/statistics' },
-    { id: 'threats', label: 'Firewall', icon: AlertTriangle, path: '/threats' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/', tutorialTarget: null },
+    { id: 'logs', label: 'Logs', icon: FileText, path: '/logs', tutorialTarget: 'nav-logs' },
+    { id: 'statistics', label: 'Statistiques', icon: BarChart3, path: '/statistics', tutorialTarget: null },
+    { id: 'threats', label: 'Firewall', icon: AlertTriangle, path: '/threats', tutorialTarget: null },
   ];
   
   // Déterminer si un item est actif basé sur le chemin
@@ -86,6 +86,7 @@ export default function Navigation() {
                       color: isActive ? COLORS.text.primary : COLORS.text.secondary,
                       textDecoration: 'none',
                     }}
+                    {...(item.tutorialTarget && { 'data-tutorial': item.tutorialTarget })}
                   >
                     <Icon size={18} />
                     <span className="text-sm font-medium">{item.label}</span>
