@@ -37,6 +37,7 @@ export function Tutorial({ steps, onComplete }: TutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [bubblePosition, setBubblePosition] = useState({ top: 0, left: 0 });
   const [arrowPosition, setArrowPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
+  const [highlightRect, setHighlightRect] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const COLORS = useColors();
   const bubbleRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +53,14 @@ export function Tutorial({ steps, onComplete }: TutorialProps) {
         const bubbleRect = bubbleRef.current.getBoundingClientRect();
         const scrollY = window.scrollY;
         const scrollX = window.scrollX;
+        
+        // Mettre à jour la position du highlight
+        setHighlightRect({
+          top: rect.top + scrollY,
+          left: rect.left + scrollX,
+          width: rect.width,
+          height: rect.height,
+        });
         
         let top = 0;
         let left = 0;
@@ -96,10 +105,14 @@ export function Tutorial({ steps, onComplete }: TutorialProps) {
     };
 
     updatePosition();
+    // Petit délai pour s'assurer que le DOM est prêt
+    const timer = setTimeout(updatePosition, 100);
+    
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition);
     };
@@ -125,14 +138,28 @@ export function Tutorial({ steps, onComplete }: TutorialProps) {
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay avec découpe pour l'élément mis en évidence */}
       <div
         className="fixed inset-0 z-40"
         style={{
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
         }}
         onClick={handleClose}
-      />
+      >
+        {/* Zone découpée pour l'élément en surbrillance */}
+        <div
+          className="absolute"
+          style={{
+            top: `${highlightRect.top}px`,
+            left: `${highlightRect.left}px`,
+            width: `${highlightRect.width}px`,
+            height: `${highlightRect.height}px`,
+            boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.5)`,
+            borderRadius: '8px',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
 
       {/* Tutorial Bubble */}
       <div
