@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { SeverityStats, SecurityLog } from '../types';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import LogCard from './LogCard';
 
 interface DashboardProps {
@@ -13,6 +13,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: DashboardProps) {
+  const COLORS = useColors();
   const navigate = useNavigate();
   
   // Trier les logs par timestamp (plus récents en premier) et prendre les 3 derniers
@@ -116,9 +117,9 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
     </div>
   );
 
-  const highPercentage = (stats.high / totalLogs) * 100;
-  const mediumPercentage = (stats.medium / totalLogs) * 100;
-  const lowPercentage = (stats.low / totalLogs) * 100;
+  const highPercentage = totalLogs > 0 ? (stats.high / totalLogs) * 100 : 0;
+  const mediumPercentage = totalLogs > 0 ? (stats.medium / totalLogs) * 100 : 0;
+  const lowPercentage = totalLogs > 0 ? (stats.low / totalLogs) * 100 : 0;
 
   return (
     <div className="space-y-6">

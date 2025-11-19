@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Routes, Route, useLocation, Navigate, Link, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useParams } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import LogsView from './components/LogsView';
@@ -7,7 +7,8 @@ import Firewall from './components/Firewall';
 import LogDetail from './components/LogDetail';
 import { generateNewLog } from './utils/mockData';
 import Statistics from './components/Statistics';
-import { COLORS } from './constants/theme';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { getColors } from './constants/theme';
 import { SeverityStats, SecurityLog } from './types';
 import { 
   loadGeneratedLogs, 
@@ -24,22 +25,43 @@ import {
 const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
 const LOG_GENERATION_MAX_DELAY = 8; // Délai maximum entre chaque log (en secondes)
 
-function App() {
-  const location = useLocation();
-  const [logs, setLogs] = useState<SecurityLog[]>([]);
-  const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(new Set());
-  const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(new Set());
-  
-  // Déterminer la section active basée sur l'URL
-  const activeSection = useMemo(() => {
-    const path = location.pathname;
-    if (path.startsWith('/logs')) return 'logs';
-    if (path.startsWith('/threats')) return 'threats';
-    if (path.startsWith('/settings')) return 'settings';
-    return 'dashboard';
-  }, [location.pathname]);
+// Initialiser l'état depuis localStorage de manière synchrone
+function getInitialLogState() {
+  try {
+    const logState = loadLogState();
+    return {
+      resolvedLogs: logState.resolvedLogs,
+      dismissedLogs: logState.dismissedLogs,
+    };
+  } catch (error) {
+    console.error('Error loading initial log state:', error);
+    return {
+      resolvedLogs: new Set<string>(),
+      dismissedLogs: new Set<string>(),
+    };
+  }
+}
 
-  // Charger les logs depuis localStorage
+function AppContent() {
+  const { theme } = useTheme();
+  const COLORS = getColors(theme);
+  const initialState = getInitialLogState();
+  // Initialiser les logs depuis localStorage de manière synchrone
+  const initialLogs = (() => {
+    try {
+      const savedLogs = loadGeneratedLogs();
+      return savedLogs && savedLogs.length > 0 ? savedLogs : [];
+    } catch (error) {
+      console.error('Error loading initial logs:', error);
+      return [];
+    }
+  })();
+  
+  const [logs, setLogs] = useState<SecurityLog[]>(initialLogs);
+  const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(initialState.resolvedLogs);
+  const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(initialState.dismissedLogs);
+
+  // Charger les logs depuis localStorage (pour synchronisation entre onglets)
   useEffect(() => {
     const savedLogs = loadGeneratedLogs();
     if (savedLogs && savedLogs.length > 0) {
@@ -210,9 +232,9 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.background.primary }}>
-      <Navigation activeSection={activeSection} />
+      <Navigation />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-[98%] mx-auto px-6 py-8">
         <Routes>
           <Route 
             path="/" 
@@ -250,25 +272,6 @@ function App() {
             path="/threats" 
             element={<Firewall totalLogs={activeLogs.length} />} 
           />
-          <Route 
-            path="/settings" 
-            element={
-              <div
-                className="rounded-lg p-12 border text-center"
-                style={{
-                  backgroundColor: COLORS.background.card,
-                  borderColor: COLORS.border,
-                }}
-              >
-                <h2 className="text-xl font-semibold mb-2" style={{ color: COLORS.text.primary }}>
-                  Configuration Système
-                </h2>
-                <p className="text-sm" style={{ color: COLORS.text.secondary }}>
-                  Paramètres de sécurité et administration
-                </p>
-              </div>
-            } 
-          />
           <Route path="/statistics" element={<Statistics logs={activeLogs} totalLogs={activeLogs.length} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -289,6 +292,8 @@ function LogDetailRoute({
   onResolveLog: (logId: number) => void; 
   onDismissLog: (logId: number) => void;
 }) {
+  const { theme } = useTheme();
+  const COLORS = getColors(theme);
   const { logId } = useParams<{ logId: string }>();
   
   // Essayer de trouver le log par ID (format LOG-00001 ou nombre)
@@ -336,6 +341,14 @@ function LogDetailRoute({
       onResolve={() => onResolveLog(log.id)}
       onDismiss={() => onDismissLog(log.id)}
     />
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

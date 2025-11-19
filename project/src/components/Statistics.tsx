@@ -1,12 +1,10 @@
-import { TrendingUp, Shield, Clock, Activity, AlertTriangle, Target } from 'lucide-react';
+import { Shield, Activity, AlertTriangle } from 'lucide-react';
 import {
   PieChart,
   Pie,
   Cell,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   AreaChart,
   Area,
   XAxis,
@@ -16,7 +14,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import { SecurityLog } from '../types';
 
 interface StatisticsProps {
@@ -25,6 +23,7 @@ interface StatisticsProps {
 }
 
 export default function Statistics({ logs, totalLogs }: StatisticsProps) {
+  const COLORS = useColors();
   // 1. Distribution de sévérité (Donut Chart)
   const severityData = [
     {
@@ -117,15 +116,17 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
     .map(([name, count]) => ({ name, count }));
 
   // 7. Score de santé global
-  const healthScore = Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        (severityData[0].value * 3 + severityData[1].value * 1.5 + severityData[2].value * 0.5) /
-          totalLogs
-    )
-  );
+  const healthScore = totalLogs > 0
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          100 -
+            (severityData[0].value * 3 + severityData[1].value * 1.5 + severityData[2].value * 0.5) /
+              totalLogs
+        )
+      )
+    : 100; // Si aucun log, score parfait
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return COLORS.success;
@@ -134,7 +135,9 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
   };
 
   // 8. Taux critique
-  const criticalRate = ((severityData[0].value / totalLogs) * 100).toFixed(1);
+  const criticalRate = totalLogs > 0
+    ? ((severityData[0].value / totalLogs) * 100).toFixed(1)
+    : '0.0';
 
   // 9. Heatmap data (simplified - by hour)
   const heatmapData = Array.from({ length: 24 }, (_, hour) => {
@@ -296,6 +299,28 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: '8px',
                   color: COLORS.text.primary,
+                }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0];
+                    const severityName = (data.payload?.name || data.name) as string;
+                    const severityValue = data.value as number;
+                    const severityColor = severityData.find(s => s.name === severityName)?.color || COLORS.text.primary;
+                    return (
+                      <div
+                        className="rounded-lg p-3 border"
+                        style={{
+                          backgroundColor: COLORS.background.card,
+                          borderColor: COLORS.border,
+                        }}
+                      >
+                        <p className="text-sm font-medium" style={{ color: severityColor }}>
+                          {severityName}: {severityValue}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
                 }}
               />
               <Legend
@@ -516,6 +541,31 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
                   borderRadius: '8px',
                   color: COLORS.text.primary,
                 }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0];
+                    const typeName = (data.payload?.name || data.name) as string;
+                    const typeValue = data.value as number;
+                    // Bugs = deepBlue, Attacks = high (red)
+                    const typeColor = typeName === 'Bugs' 
+                      ? COLORS.accent.deepBlue 
+                      : COLORS.severity.high;
+                    return (
+                      <div
+                        className="rounded-lg p-3 border"
+                        style={{
+                          backgroundColor: COLORS.background.card,
+                          borderColor: COLORS.border,
+                        }}
+                      >
+                        <p className="text-sm font-medium" style={{ color: typeColor }}>
+                          {typeName}: {typeValue}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -535,7 +585,7 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
         </h3>
         <div className="grid grid-cols-12 gap-1">
           {heatmapData.map((item, index) => {
-            const opacity = item.count / maxHeatmapValue;
+            const opacity = maxHeatmapValue > 0 ? item.count / maxHeatmapValue : 0;
             return (
               <div
                 key={index}
@@ -551,57 +601,6 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div
-        className="rounded-lg p-6 border"
-        style={{
-          backgroundColor: COLORS.background.card,
-          borderColor: COLORS.border,
-        }}
-      >
-        <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
-          Résumé des Métriques
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 rounded-lg" style={{ backgroundColor: COLORS.background.hover }}>
-            <Target size={24} className="mx-auto mb-2" style={{ color: COLORS.accent.deepBlue }} />
-            <p className="text-2xl font-bold" style={{ color: COLORS.text.primary }}>
-              {firewallData.length}
-            </p>
-            <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
-              Pare-feu Actifs
-            </p>
-          </div>
-          <div className="text-center p-4 rounded-lg" style={{ backgroundColor: COLORS.background.hover }}>
-            <Clock size={24} className="mx-auto mb-2" style={{ color: COLORS.success }} />
-            <p className="text-2xl font-bold" style={{ color: COLORS.text.primary }}>
-              187ms
-            </p>
-            <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
-              Temps de Réponse Moyen
-            </p>
-          </div>
-          <div className="text-center p-4 rounded-lg" style={{ backgroundColor: COLORS.background.hover }}>
-            <TrendingUp size={24} className="mx-auto mb-2" style={{ color: COLORS.severity.medium }} />
-            <p className="text-2xl font-bold" style={{ color: COLORS.text.primary }}>
-              {topAttacks.length}
-            </p>
-            <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
-              Types d'Attaques Uniques
-            </p>
-          </div>
-          <div className="text-center p-4 rounded-lg" style={{ backgroundColor: COLORS.background.hover }}>
-            <Activity size={24} className="mx-auto mb-2" style={{ color: COLORS.accent.deepBlue }} />
-            <p className="text-2xl font-bold" style={{ color: COLORS.text.primary }}>
-              98.7%
-            </p>
-            <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
-              Taux d'Enrichissement
-            </p>
-          </div>
         </div>
       </div>
     </div>
