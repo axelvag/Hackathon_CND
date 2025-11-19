@@ -231,7 +231,7 @@ function App() {
     <div className="min-h-screen" style={{ backgroundColor: COLORS.background.primary }}>
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-[98%] mx-auto px-6 py-8">
         <Routes>
           <Route 
             path="/" 

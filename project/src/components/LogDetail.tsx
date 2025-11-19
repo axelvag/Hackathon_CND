@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
 import { COLORS } from '../constants/theme';
 import { formatRelativeTime } from '../utils/timeUtils';
@@ -28,6 +28,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [expandedSuggestion, setExpandedSuggestion] = useState<number | null>(null);
   const [llmError, setLlmError] = useState<string | null>(null);
 
   // Couleur verte plus claire et visible pour le dark mode
@@ -61,63 +62,6 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     };
   }, [log.id]);
 
-  // Suggestions statiques basées sur le type de log (pas d'appel LLM pour éviter les timeouts)
-  const suggestions = (() => {
-    if (log.type === 'Attack') {
-      switch (log.attackSubtype) {
-        case 'brute_force_ssh':
-          return [
-            'Bloquer l\'adresse IP source via règle de pare-feu',
-            'Implémenter fail2ban pour bannir automatiquement les IP suspectes',
-            'Forcer l\'authentification par clé SSH au lieu de mot de passe',
-            'Limiter les tentatives de connexion à 3 par minute',
-            'Déplacer le service SSH sur un port non-standard',
-          ];
-        case 'malware_download':
-          return [
-            'Isoler immédiatement la machine du réseau',
-            'Lancer un scan antivirus complet avec mise à jour des signatures',
-            'Analyser le fichier téléchargé avec VirusTotal ou similaire',
-            'Vérifier les connexions réseau sortantes suspectes',
-            'Restaurer depuis une sauvegarde saine si compromis confirmé',
-          ];
-        case 'xss':
-          return [
-            'Valider et encoder toutes les entrées utilisateur',
-            'Implémenter Content Security Policy (CSP) stricte',
-            'Utiliser des bibliothèques de sanitization (DOMPurify)',
-            'Mettre à jour le framework web à la dernière version',
-            'Former les développeurs aux bonnes pratiques de sécurité',
-          ];
-        case 'port_scan':
-          return [
-            'Configurer le pare-feu pour bloquer les scans de ports',
-            'Implémenter rate limiting sur les connexions',
-            'Utiliser un IDS/IPS pour détecter les patterns de scan',
-            'Réduire la surface d\'attaque en fermant les ports inutilisés',
-            'Logger et surveiller les tentatives de scan répétées',
-          ];
-        default:
-          return [
-            'Analyser les logs pour identifier la source de l\'attaque',
-            'Bloquer l\'IP source via le pare-feu',
-            'Mettre à jour les règles de détection d\'intrusion',
-            'Vérifier l\'intégrité des systèmes affectés',
-            'Documenter l\'incident pour analyse post-mortem',
-          ];
-      }
-    } else {
-      // Type: Bug
-      return [
-        'Vérifier la configuration du pare-feu pour corriger l\'erreur',
-        'Analyser les logs système pour identifier la cause racine',
-        'Mettre à jour le firmware du pare-feu si disponible',
-        'Redémarrer le service de logging pour réinitialiser',
-        'Contacter le support technique si l\'erreur persiste',
-      ];
-    }
-  })();
-
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'High':
@@ -140,11 +84,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       if (l.attackSubtype && log.attackSubtype && l.attackSubtype === log.attackSubtype) score += 5;
       return { log: l, score };
     })
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((item) => item.log)
-    .filter((l, index, self) => index === self.findIndex((log) => log.id === l.id));
+    .filter((item) => item.score > 0) // Ne garder que les logs avec au moins un tag commun
+    .sort((a, b) => b.score - a.score) // Trier par score décroissant
+    .slice(0, 3) // Prendre les 3 meilleurs
+    .map((item) => item.log) // Extraire uniquement les logs
+    .filter((l, index, self) => 
+      // Dédupliquer : ne garder que le premier log avec cet ID
+      index === self.findIndex((log) => log.id === l.id)
+    );
 
   const handleAddComment = () => {
     if (newComment.trim()) {
@@ -200,18 +147,35 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     }
   };
 
+  const suggestions = [
+    {
+      title: 'Vérifier les règles du pare-feu pour bloquer cette source',
+      details: 'Examinez les règles de filtrage actuelles du pare-feu pour identifier si la source IP ou le port sont déjà bloqués. Si ce n\'est pas le cas, créez une nouvelle règle de blocage spécifique. Vérifiez également les règles temporaires qui pourraient expirer et nécessiter une mise à jour permanente.',
+    },
+    {
+      title: 'Mettre à jour les signatures de détection d\'intrusion',
+      details: 'Les systèmes de détection d\'intrusion (IDS/IPS) doivent être régulièrement mis à jour avec les dernières signatures de menaces. Vérifiez la version actuelle de votre base de signatures et effectuez une mise à jour si nécessaire. Cette action permettra de détecter des attaques similaires à l\'avenir.',
+    },
+    {
+      title: 'Analyser les logs du système pour identifier la source',
+      details: 'Consultez les logs système, les logs d\'application et les logs réseau pour retracer l\'origine de l\'attaque. Recherchez des patterns similaires dans les logs historiques pour déterminer si cette attaque fait partie d\'une campagne plus large. Documentez toutes les informations pertinentes pour l\'analyse forensique.',
+    },
+  ];
+
   return (
     <div 
-      className="space-y-6 transition-all duration-500 ease-in-out rounded-lg p-6"
+      className="flex flex-col transition-all duration-500 ease-in-out rounded-lg p-6"
       style={{
         backgroundColor: resolvedGreenBg,
         border: isResolved 
           ? `2px solid ${resolvedGreenBorder}` 
           : 'none',
+        height: 'calc(100vh - 64px - 64px)', // 100vh - navigation (64px) - padding main (64px = 32px top + 32px bottom)
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0 mb-6">
         <button
           onClick={onBack}
           className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-all hover:opacity-80"
@@ -250,7 +214,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       {/* Afficher erreur LLM si présente */}
       {llmError && (
         <div
-          className="rounded-lg p-4 border-l-4"
+          className="rounded-lg p-4 border-l-4 flex-shrink-0 mb-6"
           style={{
             backgroundColor: `${COLORS.severity.high}10`,
             borderLeftColor: COLORS.severity.high,
@@ -271,9 +235,79 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne principale */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+        {/* Colonne gauche - Suggestions (25%) */}
+        <div className="lg:col-span-1 flex flex-col min-h-0">
+          {/* Suggestions de correction */}
+          <div
+            className="rounded-lg p-6 border flex flex-col h-full"
+            style={{
+              backgroundColor: COLORS.background.card,
+              borderColor: COLORS.border,
+            }}
+          >
+            <h3 className="text-lg font-semibold mb-4 flex-shrink-0" style={{ color: COLORS.text.primary }}>
+              Suggestions de correction
+            </h3>
+            <ul className="space-y-2 overflow-y-auto flex-1 min-h-0">
+              {suggestions.map((suggestion, index) => {
+                const isExpanded = expandedSuggestion === index;
+                return (
+                  <li
+                    key={index}
+                    className="rounded-lg overflow-hidden transition-all transition-all hover:bg-opacity-80"
+                    style={{ backgroundColor: COLORS.background.hover }}
+                  >
+                    <button
+                      onClick={() => setExpandedSuggestion(isExpanded ? null : index)}
+                      className="w-full flex items-start space-x-3 p-3 text-left hover:opacity-80 transition-all"
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{
+                          backgroundColor: `${COLORS.accent.deepBlue}20`,
+                          color: COLORS.accent.deepBlue,
+                        }}
+                      >
+                        <span className="text-xs font-bold">{index + 1}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium" style={{ color: COLORS.text.primary }}>
+                          {suggestion.title}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0 mt-0.5">
+                        {isExpanded ? (
+                          <ChevronUp size={18} style={{ color: COLORS.text.muted }} />
+                        ) : (
+                          <ChevronDown size={18} style={{ color: COLORS.text.muted }} />
+                        )}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pl-11">
+                        <div
+                          className="p-3 rounded-lg border-l-2"
+                          style={{
+                            backgroundColor: COLORS.background.card,
+                            borderLeftColor: COLORS.accent.deepBlue,
+                          }}
+                        >
+                          <p className="text-sm leading-relaxed" style={{ color: COLORS.text.secondary }}>
+                            {suggestion.details}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+
+        {/* Colonne principale - Milieu (50%) */}
+        <div className="lg:col-span-2 flex flex-col space-y-6 min-h-0">
           {/* Informations principales */}
           <div
             className="rounded-lg p-6 border transition-all duration-500"
@@ -353,90 +387,83 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             </div>
           </div>
 
-          {/* Suggestions de correction (statiques, basées sur le type d'attaque) */}
+          {/* Chat avec LLM */}
           <div
-            className="rounded-lg p-6 border"
+            className="rounded-lg p-6 border flex flex-col flex-1 min-h-0"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
-              Suggestions de correction
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2 flex-shrink-0" style={{ color: COLORS.text.primary }}>
+              <Bot size={20} />
+              <span>Assistant IA</span>
             </h3>
-            <ul className="space-y-2">
-              {suggestions.map((suggestion, index) => (
-                <li
-                  key={index}
-                  className="flex items-start space-x-3 p-3 rounded-lg transition-all hover:bg-opacity-80"
-                  style={{ backgroundColor: COLORS.background.hover }}
-                >
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{
-                      backgroundColor: `${COLORS.accent.deepBlue}20`,
-                      color: COLORS.accent.deepBlue,
-                    }}
-                  >
-                    <span className="text-xs font-bold">{index + 1}</span>
-                  </div>
-                  <p className="text-sm" style={{ color: COLORS.text.secondary }}>
-                    {suggestion}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Commentaires */}
-          <div
-            className="rounded-lg p-6 border"
-            style={{
-              backgroundColor: COLORS.background.card,
-              borderColor: COLORS.border,
-            }}
-          >
-            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
-              <MessageSquare size={20} />
-              <span>Commentaires d'avancement</span>
-            </h3>
-            <div className="space-y-4 mb-4">
-              {comments.length === 0 ? (
+            <div className="space-y-3 mb-4 flex-1 overflow-y-auto min-h-0">
+              {chatMessages.length === 0 ? (
                 <p className="text-sm text-center py-4" style={{ color: COLORS.text.muted }}>
-                  Aucun commentaire pour le moment
+                  Posez une question sur ce log
                 </p>
               ) : (
-                comments.map((comment) => (
+                chatMessages.map((msg, index) => (
                   <div
-                    key={comment.id}
-                    className="p-4 rounded-lg"
-                    style={{ backgroundColor: COLORS.background.hover }}
+                    key={index}
+                    className={`flex items-start space-x-2 ${msg.role === 'user' ? 'justify-end' : ''}`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <User size={14} style={{ color: COLORS.text.muted }} />
-                        <span className="text-xs font-medium" style={{ color: COLORS.text.primary }}>
-                          {comment.author}
-                        </span>
+                    {msg.role === 'assistant' && (
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: `${COLORS.accent.deepBlue}20`,
+                          color: COLORS.accent.deepBlue,
+                        }}
+                      >
+                        <Bot size={14} />
                       </div>
-                      <span className="text-xs" style={{ color: COLORS.text.muted }}>
-                        {formatRelativeTime(comment.timestamp)}
-                      </span>
+                    )}
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        msg.role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'
+                      }`}
+                      style={{
+                        backgroundColor:
+                          msg.role === 'user' ? COLORS.accent.deepBlue : COLORS.background.hover,
+                        color: msg.role === 'user' ? '#fff' : COLORS.text.secondary,
+                      }}
+                    >
+                      <p className="text-sm">{msg.content}</p>
                     </div>
-                    <p className="text-sm" style={{ color: COLORS.text.secondary }}>
-                      {comment.content}
-                    </p>
+                    {msg.role === 'user' && (
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: `${COLORS.text.muted}20`,
+                          color: COLORS.text.muted,
+                        }}
+                      >
+                        <User size={14} />
+                      </div>
+                    )}
                   </div>
                 ))
               )}
+              {isLoadingChat && (
+                <div className="flex items-center space-x-2">
+                  <Bot size={16} style={{ color: COLORS.accent.deepBlue }} />
+                  <span className="text-sm" style={{ color: COLORS.text.muted }}>
+                    En train de réfléchir...
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 flex-shrink-0">
               <input
                 type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                placeholder="Ajouter un commentaire..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !isLoadingChat && handleChatSubmit()}
+                placeholder="Posez une question..."
+                disabled={isLoadingChat}
                 className="flex-1 px-4 py-2 rounded-lg border outline-none text-sm"
                 style={{
                   backgroundColor: COLORS.background.hover,
@@ -445,8 +472,9 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                 }}
               />
               <button
-                onClick={handleAddComment}
-                className="px-4 py-2 rounded-lg transition-all hover:opacity-80"
+                onClick={handleChatSubmit}
+                disabled={isLoadingChat}
+                className="px-4 py-2 rounded-lg transition-all hover:opacity-80 disabled:opacity-50"
                 style={{
                   backgroundColor: COLORS.accent.deepBlue,
                   color: '#fff',
@@ -458,17 +486,17 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           </div>
         </div>
 
-        {/* Colonne latérale */}
-        <div className="space-y-6">
+        {/* Colonne droite - Tickets similaires et Commentaires (25%) */}
+        <div className="lg:col-span-1 flex flex-col space-y-6 min-h-0">
           {/* Tickets similaires */}
           <div
-            className="rounded-lg p-6 border"
+            className="rounded-lg p-6 border flex flex-col flex-1 min-h-0"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.text.primary }}>
+            <h3 className="text-lg font-semibold mb-4 flex-shrink-0" style={{ color: COLORS.text.primary }}>
               Tickets similaires
             </h3>
             {similarLogs.length === 0 ? (
@@ -476,7 +504,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                 Aucune suggestion trouvée pour le moment
               </p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-y-auto flex-1 min-h-0">
                 {similarLogs.map((similarLog) => {
                   const formatSubtype = (subtype: string): string => {
                     return subtype
@@ -566,20 +594,20 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
 
           {/* Chat avec LLM (API OVH réelle) */}
           <div
-            className="rounded-lg p-6 border"
+            className="rounded-lg p-6 border flex flex-col flex-1 min-h-0"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
             }}
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
-              <Bot size={20} />
-              <span>Assistant IA</span>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2 flex-shrink-0" style={{ color: COLORS.text.primary }}>
+              <MessageSquare size={20} />
+              <span>Commentaires d'avancement</span>
             </h3>
 
             {/* Contexte du Log */}
             <div
-              className="mb-4 p-3 rounded-lg border-l-4"
+              className="mb-4 p-3 rounded-lg border-l-4 flex-shrink-0"
               style={{
                 backgroundColor: COLORS.background.hover,
                 borderLeftColor: getSeverityColor(log.severity),
@@ -598,105 +626,40 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               </div>
             </div>
 
-            <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
-              {chatMessages.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-sm mb-3" style={{ color: COLORS.text.muted }}>
-                    Posez une question sur ce log à l'IA
-                  </p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <button
-                      onClick={() => setChatInput("Comment corriger ce problème ?")}
-                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-                      style={{
-                        backgroundColor: `${COLORS.accent.deepBlue}20`,
-                        color: COLORS.accent.deepBlue,
-                      }}
-                    >
-                      💡 Comment corriger ?
-                    </button>
-                    <button
-                      onClick={() => setChatInput("Quelle est la gravité réelle ?")}
-                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-                      style={{
-                        backgroundColor: `${COLORS.accent.deepBlue}20`,
-                        color: COLORS.accent.deepBlue,
-                      }}
-                    >
-                      ⚠️ Gravité réelle ?
-                    </button>
-                    <button
-                      onClick={() => setChatInput("Quels sont les indicateurs de compromission ?")}
-                      className="text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
-                      style={{
-                        backgroundColor: `${COLORS.accent.deepBlue}20`,
-                        color: COLORS.accent.deepBlue,
-                      }}
-                    >
-                      🔍 IOC ?
-                    </button>
-                  </div>
-                </div>
+            <div className="space-y-3 mb-4 flex-1 overflow-y-auto min-h-0">
+              {comments.length === 0 ? (
+                <p className="text-sm text-center py-4" style={{ color: COLORS.text.muted }}>
+                  Aucun commentaire pour le moment
+                </p>
               ) : (
-                chatMessages.map((msg, index) => (
+                comments.map((comment) => (
                   <div
-                    key={index}
-                    className={`flex items-start space-x-2 ${msg.role === 'user' ? 'justify-end' : ''}`}
+                    key={comment.id}
+                    className="p-4 rounded-lg"
+                    style={{ backgroundColor: COLORS.background.hover }}
                   >
-                    {msg.role === 'assistant' && (
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{
-                          backgroundColor: `${COLORS.accent.deepBlue}20`,
-                          color: COLORS.accent.deepBlue,
-                        }}
-                      >
-                        <Bot size={14} />
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <User size={14} style={{ color: COLORS.text.muted }} />
+                        <span className="text-xs font-medium" style={{ color: COLORS.text.primary }}>
+                          {comment.author}
+                        </span>
                       </div>
-                    )}
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        msg.role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'
-                      }`}
-                      style={{
-                        backgroundColor:
-                          msg.role === 'user' ? COLORS.accent.deepBlue : COLORS.background.hover,
-                        color: msg.role === 'user' ? '#fff' : COLORS.text.secondary,
-                      }}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     </div>
-                    {msg.role === 'user' && (
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{
-                          backgroundColor: `${COLORS.text.muted}20`,
-                          color: COLORS.text.muted,
-                        }}
-                      >
-                        <User size={14} />
-                      </div>
-                    )}
+                    <p className="text-sm" style={{ color: COLORS.text.secondary }}>
+                      {comment.content}
+                    </p>
                   </div>
                 ))
               )}
-              {isLoadingChat && (
-                <div className="flex items-center space-x-2">
-                  <Loader2 size={16} className="animate-spin" style={{ color: COLORS.accent.deepBlue }} />
-                  <span className="text-sm" style={{ color: COLORS.text.muted }}>
-                    L'IA analyse le contexte...
-                  </span>
-                </div>
-              )}
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 flex-shrink-0">
               <input
                 type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !isLoadingChat && handleChatSubmit()}
-                placeholder="Posez une question..."
-                disabled={isLoadingChat}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                placeholder="Ajouter un commentaire..."
                 className="flex-1 px-4 py-2 rounded-lg border outline-none text-sm"
                 style={{
                   backgroundColor: COLORS.background.hover,
@@ -705,9 +668,8 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                 }}
               />
               <button
-                onClick={handleChatSubmit}
-                disabled={isLoadingChat}
-                className="px-4 py-2 rounded-lg transition-all hover:opacity-80 disabled:opacity-50"
+                onClick={handleAddComment}
+                className="px-4 py-2 rounded-lg transition-all hover:opacity-80"
                 style={{
                   backgroundColor: COLORS.accent.deepBlue,
                   color: '#fff',
