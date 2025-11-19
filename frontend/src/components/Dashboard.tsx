@@ -34,7 +34,7 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
   // Trier les logs par timestamp (plus récents en premier) et prendre les 3 derniers
   const lastThreeLogs = useMemo(() => {
     return [...logs]
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 3);
   }, [logs]);
 

@@ -70,7 +70,7 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
 
   const timelineData = getLast7Days().map((date) => {
     const dayLogs = logs.filter((l) => {
-      const logDate = l.timestamp.toISOString().split('T')[0];
+      const logDate = new Date(l.timestamp).toISOString().split('T')[0];
       return logDate === date;
     });
     return {
@@ -142,7 +142,7 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
   // 9. Heatmap data (simplified - by hour)
   const heatmapData = Array.from({ length: 24 }, (_, hour) => {
     const hourLogs = logs.filter((l) => {
-      const logHour = l.timestamp.getHours();
+      const logHour = new Date(l.timestamp).getHours();
       return logHour === hour;
     });
     return {

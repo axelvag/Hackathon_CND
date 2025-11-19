@@ -213,28 +213,34 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     }
   };
 
-  const suggestions = [
-    {
-      title: 'Vérifier les règles du pare-feu pour bloquer cette source',
-      details: 'Examinez les règles de filtrage actuelles du pare-feu pour identifier si la source IP ou le port sont déjà bloqués. Si ce n\'est pas le cas, créez une nouvelle règle de blocage spécifique. Vérifiez également les règles temporaires qui pourraient expirer et nécessiter une mise à jour permanente.',
-    },
-    {
-      title: 'Mettre à jour les signatures de détection d\'intrusion',
-      details: 'Les systèmes de détection d\'intrusion (IDS/IPS) doivent être régulièrement mis à jour avec les dernières signatures de menaces. Vérifiez la version actuelle de votre base de signatures et effectuez une mise à jour si nécessaire. Cette action permettra de détecter des attaques similaires à l\'avenir.',
-    },
-    {
-      title: 'Analyser les logs du système pour identifier la source',
-      details: 'Consultez les logs système, les logs d\'application et les logs réseau pour retracer l\'origine de l\'attaque. Recherchez des patterns similaires dans les logs historiques pour déterminer si cette attaque fait partie d\'une campagne plus large. Documentez toutes les informations pertinentes pour l\'analyse forensique.',
-    },
-    {
-      title: 'Isoler le système affecté du réseau principal',
-      details: 'En cas de compromission confirmée ou suspectée, isolez immédiatement le système affecté du reste du réseau pour empêcher la propagation de la menace. Utilisez le réseau de quarantaine si disponible, ou déconnectez physiquement le système. Assurez-vous de préserver les preuves pour l\'analyse ultérieure.',
-    },
-    {
-      title: 'Contacter l\'équipe de sécurité pour une analyse approfondie',
-      details: 'Si l\'attaque est de nature critique ou si vous avez besoin d\'une expertise supplémentaire, contactez immédiatement l\'équipe de sécurité informatique (SOC). Fournissez tous les détails pertinents : timestamp, source IP, type d\'attaque, et actions déjà entreprises. Une réponse coordonnée est essentielle pour gérer efficacement l\'incident.',
-    },
-  ];
+  // Utiliser les données de remediation du backend, ou des suggestions par défaut si absentes
+  const suggestions = log.remediation && log.remediation.length > 0
+    ? log.remediation.map(step => ({
+        title: step.title,
+        details: step.description,
+      }))
+    : [
+        {
+          title: 'Vérifier les règles du pare-feu pour bloquer cette source',
+          details: 'Examinez les règles de filtrage actuelles du pare-feu pour identifier si la source IP ou le port sont déjà bloqués. Si ce n\'est pas le cas, créez une nouvelle règle de blocage spécifique. Vérifiez également les règles temporaires qui pourraient expirer et nécessiter une mise à jour permanente.',
+        },
+        {
+          title: 'Mettre à jour les signatures de détection d\'intrusion',
+          details: 'Les systèmes de détection d\'intrusion (IDS/IPS) doivent être régulièrement mis à jour avec les dernières signatures de menaces. Vérifiez la version actuelle de votre base de signatures et effectuez une mise à jour si nécessaire. Cette action permettra de détecter des attaques similaires à l\'avenir.',
+        },
+        {
+          title: 'Analyser les logs du système pour identifier la source',
+          details: 'Consultez les logs système, les logs d\'application et les logs réseau pour retracer l\'origine de l\'attaque. Recherchez des patterns similaires dans les logs historiques pour déterminer si cette attaque fait partie d\'une campagne plus large. Documentez toutes les informations pertinentes pour l\'analyse forensique.',
+        },
+        {
+          title: 'Isoler le système affecté du réseau principal',
+          details: 'En cas de compromission confirmée ou suspectée, isolez immédiatement le système affecté du reste du réseau pour empêcher la propagation de la menace. Utilisez le réseau de quarantaine si disponible, ou déconnectez physiquement le système. Assurez-vous de préserver les preuves pour l\'analyse ultérieure.',
+        },
+        {
+          title: 'Contacter l\'équipe de sécurité pour une analyse approfondie',
+          details: 'Si l\'attaque est de nature critique ou si vous avez besoin d\'une expertise supplémentaire, contactez immédiatement l\'équipe de sécurité informatique (SOC). Fournissez tous les détails pertinents : timestamp, source IP, type d\'attaque, et actions déjà entreprises. Une réponse coordonnée est essentielle pour gérer efficacement l\'incident.',
+        },
+      ];
 
   return (
     <div 
@@ -449,7 +455,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             </div>
 
             <h2 className="text-xl font-bold mb-4" style={{ color: COLORS.text.primary }}>
-              Explication détaillée
+              {log.title || 'Explication détaillée'}
             </h2>
             <p className="text-sm leading-relaxed mb-6" style={{ color: COLORS.text.secondary }}>
               {log.explanation}
@@ -474,19 +480,6 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                   </p>
                 </div>
               </div>
-              {viewMode === 'expert' && (
-                <>
-                  <div className="flex items-center space-x-2">
-                    <Clock size={16} style={{ color: COLORS.text.muted }} />
-                    <div>
-                      <p className="text-xs" style={{ color: COLORS.text.muted }}>Timestamp ISO</p>
-                      <p className="text-xs font-mono" style={{ color: COLORS.text.secondary }}>
-                        {log.timestamp.toISOString()}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -891,6 +884,12 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                       {log.firewallId || 'N/A'}
                     </p>
                   </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Timestamp Raw:</span>
+                    <p className="font-mono text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {log.timestampRaw || 'N/A'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -908,18 +907,11 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Score de risque:</span>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Type connu:</span>
                     <p className="text-xs mt-1 font-semibold" style={{ 
-                      color: log.severity === 'High' ? COLORS.severity.high : 
-                             log.severity === 'Medium' ? COLORS.severity.medium : COLORS.severity.low 
+                      color: log.knownType ? COLORS.success : COLORS.severity.medium 
                     }}>
-                      {log.severity === 'High' ? '85/100' : log.severity === 'Medium' ? '55/100' : '25/100'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Raison:</span>
-                    <p className="text-xs mt-1 break-all" style={{ color: COLORS.text.secondary }}>
-                      {log.explanation || 'N/A'}
+                      {log.knownType !== undefined ? (log.knownType ? 'Oui' : 'Non') : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -932,43 +924,24 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               </div>
             </div>
 
-            {/* Raw data en mode expert */}
-            <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
-              <div className="flex items-center space-x-2 mb-3">
-                <Code size={18} style={{ color: COLORS.accent.deepBlue }} />
-                <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Raw Log Data (JSON)</span>
+            {/* Raw log CSV en mode expert */}
+            {log.logRaw && (
+              <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Code size={18} style={{ color: COLORS.accent.deepBlue }} />
+                  <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Raw CSV Log (Original)</span>
+                </div>
+                <pre className="text-xs p-4 rounded overflow-x-auto" style={{ 
+                  backgroundColor: COLORS.background.card, 
+                  color: COLORS.text.secondary,
+                  fontFamily: 'monospace',
+                  maxHeight: '400px',
+                  overflowY: 'auto'
+                }}>
+                  {JSON.stringify(log.logRaw, null, 2)}
+                </pre>
               </div>
-              <pre className="text-xs p-4 rounded overflow-x-auto" style={{ 
-                backgroundColor: COLORS.background.card, 
-                color: COLORS.text.secondary,
-                fontFamily: 'monospace',
-                maxHeight: '400px',
-                overflowY: 'auto'
-              }}>
-                {JSON.stringify({
-                  id: log.id,
-                  timestamp: log.timestamp.toISOString(),
-                  firewall_id: log.firewallId,
-                  src_ip: log.srcIp,
-                  dst_ip: log.dstIp,
-                  src_port: log.srcPort,
-                  dst_port: log.dstPort,
-                  protocol: log.protocol,
-                  action: log.action,
-                  bytes: log.bytes,
-                  duration_ms: log.durationMs,
-                  rule_id: log.ruleId,
-                  session_id: log.sessionId,
-                  user: log.user,
-                  reason: log.explanation,
-                  status: log.status,
-                  flags: log.flags,
-                  severity: log.severity,
-                  type: log.type,
-                  attackSubtype: log.attackSubtype,
-                }, null, 2)}
-              </pre>
-            </div>
+            )}
           </div>
         </div>
       )}

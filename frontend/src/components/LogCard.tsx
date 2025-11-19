@@ -124,7 +124,7 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
           className="text-sm leading-relaxed"
           style={{ color: COLORS.text.primary }}
         >
-          {log.explanation}
+          {log.title}
         </p>
       </div>
 
@@ -149,8 +149,8 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
         <div className="mt-3 pt-3 border-t space-y-2" style={{ borderColor: COLORS.border }}>
           <div className="flex items-center space-x-1.5 text-xs">
             <Clock size={12} style={{ color: COLORS.text.muted }} />
-            <span style={{ color: COLORS.text.muted }} className="font-mono">
-              {log.timestamp.toISOString()}
+            <span style={{ color: COLORS.text.muted }} className="font-mono text-[10px]">
+              Raw: {log.timestampRaw}
             </span>
           </div>
           <div className="flex items-center space-x-2 text-xs">

@@ -1,3 +1,9 @@
+/**
+ * @deprecated Ce fichier n'est plus utilisé.
+ * Les logs sont maintenant générés depuis le CSV via le backend (voir csvService.ts et logAnalysisService.ts).
+ * Ce fichier peut être supprimé si vous n'en avez plus besoin.
+ */
+
 import { SecurityLog, SeverityLevel, LogType } from '../types';
 
 // Dataset basé sur le fichier CSV fourni
@@ -61,7 +67,8 @@ const firewalls = ['FW-A', 'FW-B'];
 function csvRowToLog(row: CSVLogRow, id: number): SecurityLog {
   const log: SecurityLog = {
     id: id, // Stocker uniquement le nombre
-    timestamp: new Date(row.timestamp),
+    timestamp: new Date().toISOString(), // Timestamp live (moment de la génération)
+    timestampRaw: row.timestamp, // Timestamp original du CSV
     firewallId: row.firewall_id,
     severity: row.severity,
     explanation: row.explanation,
@@ -107,12 +114,12 @@ function generateLogFromDataset(id: number, useCurrentTime: boolean = false): Se
   
   // Si on veut utiliser le temps actuel (pour les nouveaux logs)
   if (useCurrentTime) {
-    log.timestamp = new Date();
+    log.timestamp = new Date().toISOString();
   } else {
     // Sinon, utiliser le timestamp du dataset mais avec une variation aléatoire
     const baseTime = new Date(baseRow.timestamp);
     const variation = Math.random() * 24 * 60 * 60 * 1000; // Variation de 0 à 24h
-    log.timestamp = new Date(baseTime.getTime() - variation);
+    log.timestamp = new Date(baseTime.getTime() - variation).toISOString();
   }
 
   // Parfois varier le firewall aléatoirement
@@ -184,6 +191,6 @@ export function generateNewLog(getNextId: () => number): SecurityLog {
   const nextId = getNextId();
   const log = generateLogFromDataset(nextId, true);
   // S'assurer que le timestamp est actuel pour les nouveaux logs
-  log.timestamp = new Date();
+  log.timestamp = new Date().toISOString();
   return log;
 }

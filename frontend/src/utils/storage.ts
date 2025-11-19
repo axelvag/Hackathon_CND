@@ -149,11 +149,8 @@ export function addLogComment(logId: number, comment: Omit<LogComment, 'logId' |
  */
 export function saveGeneratedLogs(logs: SecurityLog[]): void {
   try {
-    const logsToSave = logs.map((log) => ({
-      ...log,
-      timestamp: log.timestamp.toISOString(),
-    }));
-    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logsToSave));
+    // Les timestamps sont déjà des strings, pas besoin de conversion
+    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
   } catch (error) {
     console.error('Error saving logs to localStorage:', error);
   }
@@ -179,10 +176,36 @@ export function loadGeneratedLogs(): SecurityLog[] | null {
         logId = 0;
       }
       
+      // Migrer les anciens timestamps Date vers string si nécessaire
+      let timestamp: string;
+      if (typeof log.timestamp === 'string') {
+        timestamp = log.timestamp;
+      } else if (log.timestamp && typeof log.timestamp === 'object') {
+        // Ancien format Date, convertir en ISO string
+        timestamp = new Date(log.timestamp).toISOString();
+      } else {
+        // Fallback: utiliser la date actuelle
+        timestamp = new Date().toISOString();
+      }
+      
+      // Gérer timestampRaw (peut être absent pour les anciens logs)
+      let timestampRaw: string;
+      if (log.timestampRaw && typeof log.timestampRaw === 'string') {
+        timestampRaw = log.timestampRaw;
+      } else {
+        // Pour les anciens logs sans timestampRaw, utiliser le timestamp comme fallback
+        timestampRaw = timestamp;
+      }
+      
+      // logRaw est optionnel, il peut être absent pour les anciens logs
+      // On le garde tel quel s'il existe
+      
       return {
         ...log,
         id: logId,
-        timestamp: new Date(log.timestamp),
+        timestamp,
+        timestampRaw,
+        // logRaw est déjà dans log si présent, sinon undefined
       };
     });
   } catch (error) {

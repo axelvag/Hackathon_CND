@@ -1,9 +1,11 @@
 /**
  * Formate une date en temps relatif (ex: "il y a 2 secondes", "il y a 5 minutes", "il y a 3 heures")
+ * Accepte une string ISO ou un objet Date
  */
-export function formatRelativeTime(date: Date): string {
+export function formatRelativeTime(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
 
   if (diffInSeconds < 60) {
     return `il y a ${diffInSeconds} seconde${diffInSeconds !== 1 ? 's' : ''}`;

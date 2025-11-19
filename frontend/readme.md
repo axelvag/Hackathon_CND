@@ -60,6 +60,9 @@ VITE_OVH_AI_ENDPOINT_URL=https://deepseek-r1-distill-llama-70b.endpoints.kepler.
 # Token d'accès OVH AI
 VITE_OVH_AI_ACCESS_TOKEN=votre_token_ici
 
+# URL du backend pour l'analyse de logs
+VITE_BACKEND_URL=http://localhost:8000
+
 # Endpoint de l'API d'appels téléphoniques (backend)
 VITE_CALL_API_ENDPOINT=http://localhost:8000/call
 ```

@@ -5,7 +5,6 @@ import Dashboard from './components/Dashboard';
 import LogsView from './components/LogsView';
 import Firewall from './components/Firewall';
 import LogDetail from './components/LogDetail';
-import { generateNewLog } from './utils/mockData';
 import Statistics from './components/Statistics';
 import Settings from './components/Settings';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -25,10 +24,12 @@ import {
 } from './utils/storage';
 import { callService } from './services/callService';
 import { ViewProvider } from './contexts/ViewContext';
+import { csvService } from './services/csvService';
+import { logAnalysisService } from './services/logAnalysisService';
 
 // Configuration de la vitesse d'apparition des logs (en secondes)
-const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
-const LOG_GENERATION_MAX_DELAY = 8; // Délai maximum entre chaque log (en secondes)
+const LOG_GENERATION_MIN_DELAY = 1; // Délai minimum entre chaque log (en secondes)
+const LOG_GENERATION_MAX_DELAY = 2; // Délai maximum entre chaque log (en secondes)
 
 // Initialiser l'état depuis localStorage de manière synchrone
 function getInitialLogState() {
@@ -141,83 +142,142 @@ function AppContent() {
     }
   }, [dismissedLogs]);
 
-  // Générer automatiquement de nouveaux logs
+  // Générer automatiquement de nouveaux logs depuis le CSV via le backend
   useEffect(() => {
     let currentTimeout: NodeJS.Timeout | null = null;
     let isActive = true;
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5; // Arrêter après 5 erreurs consécutives
 
-    const generateAndAddLog = () => {
+    const generateAndAddLog = async () => {
       if (!isActive) return;
       
-      const newLog = generateNewLog(getNextLogId);
-      setLogs((prevLogs) => {
-        // Vérifier que le log n'existe pas déjà (par sécurité)
-        const logExists = prevLogs.some(log => log.id === newLog.id);
-        if (logExists) {
-          return prevLogs;
-        }
-        // Ajouter le nouveau log au début de la liste
-        const updatedLogs = [newLog, ...prevLogs];
-        // Sauvegarder dans localStorage
-        saveGeneratedLogs(updatedLogs);
-        return updatedLogs;
-      });
-
-      // Vérifier si on doit déclencher des appels téléphoniques périodiques
-      // Si le log est HIGH et que les notifications sont activées
-      if (newLog.severity === 'High') {
-        const notificationsEnabled = loadNotificationsEnabled();
-        const phoneNumber = loadPhoneNumber();
+      try {
+        // Récupérer le prochain log brut du CSV
+        let rawLog = await csvService.getNextLog();
         
-        if (notificationsEnabled && phoneNumber) {
-          // Déclencher le premier appel immédiatement
-          callService.triggerCall(phoneNumber, newLog).catch((error) => {
-            console.error('Erreur lors du déclenchement de l\'appel téléphonique:', error);
-          });
-          
-          // Démarrer les appels périodiques toutes les 15 à 30 secondes
-          const startPeriodicCalls = () => {
-            const getRandomDelay = () => {
-              const minDelay = 15000; // 15 secondes
-              const maxDelay = 30000; // 30 secondes
-              return Math.random() * (maxDelay - minDelay) + minDelay;
-            };
-            
-            const scheduleNextCall = () => {
-              const interval = setTimeout(() => {
-                // Vérifier que les notifications sont toujours activées et que le log existe toujours
-                const stillEnabled = loadNotificationsEnabled();
-                const stillPhoneNumber = loadPhoneNumber();
-                
-                if (stillEnabled && stillPhoneNumber) {
-                  callService.triggerCall(stillPhoneNumber, newLog).catch((error) => {
-                    console.error('Erreur lors du déclenchement de l\'appel téléphonique périodique:', error);
-                  });
-                  scheduleNextCall(); // Planifier le prochain appel
-                } else {
-                  // Arrêter si les notifications sont désactivées
-                  callIntervalsRef.current.delete(newLog.id);
-                }
-              }, getRandomDelay());
-              
-              callIntervalsRef.current.set(newLog.id, interval);
-            };
-            
-            scheduleNextCall();
-          };
-          
-          startPeriodicCalls();
+        // Si plus de logs, réinitialiser le CSV
+        if (!rawLog) {
+          console.log('📄 Tous les logs du CSV ont été traités. Réinitialisation...');
+          csvService.reset();
+          rawLog = await csvService.getNextLog();
         }
-      }
 
-      // Planifier le prochain log avec un délai aléatoire
-      if (isActive) {
-        const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
-        const maxDelayMs = LOG_GENERATION_MAX_DELAY * 1000;
-        const delay = Math.random() * (maxDelayMs - minDelayMs) + minDelayMs;
-        currentTimeout = setTimeout(() => {
-          generateAndAddLog();
-        }, delay);
+        if (!rawLog) {
+          console.warn('⚠️ Aucun log disponible dans le CSV. Arrêt de la génération.');
+          return;
+        }
+
+        // Analyser le log via le backend
+        const logId = getNextLogId();
+        const newLog = await logAnalysisService.analyzeLog(rawLog, logId);
+        
+        // Si le log n'est pas à traiter (null), passer au suivant sans erreur
+        if (!newLog) {
+          // Réinitialiser le compteur d'erreurs car ce n'est pas une erreur
+          consecutiveErrors = 0;
+          // Planifier le prochain log immédiatement (avec un petit délai)
+          if (isActive) {
+            const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
+            const maxDelayMs = LOG_GENERATION_MAX_DELAY * 1000;
+            const delay = Math.random() * (maxDelayMs - minDelayMs) + minDelayMs;
+            currentTimeout = setTimeout(() => {
+              generateAndAddLog();
+            }, delay);
+          }
+          return;
+        }
+        
+        // Réinitialiser le compteur d'erreurs en cas de succès
+        consecutiveErrors = 0;
+
+        setLogs((prevLogs) => {
+          // Vérifier que le log n'existe pas déjà (par sécurité)
+          const logExists = prevLogs.some(log => log.id === newLog.id);
+          if (logExists) {
+            return prevLogs;
+          }
+          // Ajouter le nouveau log au début de la liste
+          const updatedLogs = [newLog, ...prevLogs];
+          // Sauvegarder dans localStorage
+          saveGeneratedLogs(updatedLogs);
+          return updatedLogs;
+        });
+
+        // Vérifier si on doit déclencher des appels téléphoniques périodiques
+        // Si le log est HIGH et que les notifications sont activées
+        if (newLog.severity === 'High') {
+          const notificationsEnabled = loadNotificationsEnabled();
+          const phoneNumber = loadPhoneNumber();
+          
+          if (notificationsEnabled && phoneNumber) {
+            // Déclencher le premier appel immédiatement via le backend
+            callService.triggerCall(phoneNumber, newLog).catch((error) => {
+              console.error('Erreur lors du déclenchement de l\'appel téléphonique:', error);
+            });
+            
+            // Démarrer les appels périodiques toutes les 15 à 30 secondes
+            const startPeriodicCalls = () => {
+              const getRandomDelay = () => {
+                const minDelay = 15000; // 15 secondes
+                const maxDelay = 30000; // 30 secondes
+                return Math.random() * (maxDelay - minDelay) + minDelay;
+              };
+              
+              const scheduleNextCall = () => {
+                const interval = setTimeout(() => {
+                  // Vérifier que les notifications sont toujours activées et que le log existe toujours
+                  const stillEnabled = loadNotificationsEnabled();
+                  const stillPhoneNumber = loadPhoneNumber();
+                  
+                  if (stillEnabled && stillPhoneNumber) {
+                    callService.triggerCall(stillPhoneNumber, newLog).catch((error) => {
+                      console.error('Erreur lors du déclenchement de l\'appel téléphonique périodique:', error);
+                    });
+                    scheduleNextCall(); // Planifier le prochain appel
+                  } else {
+                    // Arrêter si les notifications sont désactivées
+                    callIntervalsRef.current.delete(newLog.id);
+                  }
+                }, getRandomDelay());
+              
+                callIntervalsRef.current.set(newLog.id, interval);
+              };
+              
+              scheduleNextCall();
+            };
+            
+            startPeriodicCalls();
+          }
+        }
+
+        // Planifier le prochain log avec un délai aléatoire
+        if (isActive) {
+          const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
+          const maxDelayMs = LOG_GENERATION_MAX_DELAY * 1000;
+          const delay = Math.random() * (maxDelayMs - minDelayMs) + minDelayMs;
+          currentTimeout = setTimeout(() => {
+            generateAndAddLog();
+          }, delay);
+        }
+      } catch (error) {
+        consecutiveErrors++;
+        console.error(`❌ Erreur lors de l'analyse du log via le backend (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error);
+        
+        // Si trop d'erreurs consécutives, arrêter la génération
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          console.error('🛑 Trop d\'erreurs consécutives. Arrêt de la génération de logs.');
+          console.error('💡 Vérifiez que le backend est démarré et accessible à:', logAnalysisService.getBaseUrl());
+          return;
+        }
+
+        // Réessayer après un délai plus long en cas d'erreur
+        if (isActive) {
+          const errorDelay = 10000; // 10 secondes en cas d'erreur
+          currentTimeout = setTimeout(() => {
+            generateAndAddLog();
+          }, errorDelay);
+        }
       }
     };
 

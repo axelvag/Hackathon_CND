@@ -90,7 +90,7 @@ export default function LogsView({
   const sortedLogs = useMemo(() => {
     return [...filteredLogs].sort((a, b) => {
       // Trier d'abord par timestamp (du plus récent au plus ancien)
-      const timestampDiff = b.timestamp.getTime() - a.timestamp.getTime();
+      const timestampDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       if (timestampDiff !== 0) return timestampDiff;
       // Si les timestamps sont identiques, trier par sévérité (High, Medium, Low)
       const severityOrder = { High: 0, Medium: 1, Low: 2 };
