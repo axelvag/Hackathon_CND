@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../constants/theme';
-import logo from '../Ministère_des_Armées_et_des_Anciens_Combattants.webp';
+import logo from '../../public/Ministère_des_Armées.webp';
 
 export default function Navigation() {
   const location = useLocation();

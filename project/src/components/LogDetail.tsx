@@ -453,7 +453,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             <div className="space-y-3 mb-4 flex-1 overflow-y-auto min-h-0">
               {chatMessages.length === 0 ? (
                 <p className="text-sm text-center py-4" style={{ color: COLORS.text.muted }}>
-                  Posez une question sur ce log
+                  🛡️ Comment empêcher ce type de log ?
                 </p>
               ) : (
                 chatMessages.map((msg, index) => (
