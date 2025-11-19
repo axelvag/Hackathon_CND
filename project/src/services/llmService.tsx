@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-const BASE_URL = import.meta.env.VITE_OVH_AI_ENDPOINT_URL || 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1';
+const BASE_URL = import.meta.env.VITE_OVH_AI_ENDPOINT_URL || 'https://deepseek-r1-distill-llama-70b.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1';
 const API_KEY = import.meta.env.VITE_OVH_AI_ACCESS_TOKEN;
 
 interface ChatMessage {
@@ -66,7 +66,7 @@ export class LLMService {
     // Paramètres avec valeurs par défaut
     const temperature = options?.temperature ?? 0.7;
     const maxTokens = options?.maxTokens ?? 512;
-    const model = options?.model || 'gpt-oss-120b';
+    const model = options?.model || 'DeepSeek-R1-Distill-Llama-70B';
     const timeout = options?.timeout || this.defaultTimeout;
     const retries = options?.retries ?? 2;
 
@@ -176,29 +176,51 @@ export class LLMService {
    * OPTIMISÉ: limite l'historique de conversation
    */
   async answerLogQuestion(
-    logContext: string,
+    logContext: string,       // non utilisé mais gardé pour compatibilité
     userQuestion: string,
     conversationHistory: ChatMessage[] = []
   ): Promise<string> {
-    const systemPrompt = `Assistant cybersécurité. Réponses précises et concises en français.`;
-
-    // Limiter l'historique pour réduire les tokens
-    const limitedHistory = conversationHistory.slice(-4); // Garder seulement les 4 derniers messages
-
+  
+    // On envoie simplement l'historique + la question de l'utilisateur
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Contexte: ${logContext}` },
-      ...limitedHistory,
+      ...conversationHistory,
       { role: 'user', content: userQuestion },
     ];
-
+  
     return this.chatCompletion(messages, {
       temperature: 0.7,
       maxTokens: 300,
       timeout: 45000,
-      retries: 1, // Moins de retries pour le chat en temps réel
+      retries: 1,
     });
   }
+
+//   async answerLogQuestion(
+//     logContext: string,
+//     userQuestion: string,
+//     conversationHistory: ChatMessage[] = []
+//   ): Promise<string> {
+//     const systemPrompt = `Assistant cybersécurité. Réponses précises et concises en français.`;
+
+//     // Limiter l'historique pour réduire les tokens
+//     const limitedHistory = conversationHistory.slice(-4); // Garder seulement les 4 derniers messages
+
+//     const messages: ChatMessage[] = [
+//       { role: 'system', content: systemPrompt },
+//       { role: 'user', content: `Contexte: ${logContext}` },
+//       ...limitedHistory,
+//       { role: 'user', content: userQuestion },
+//     ];
+
+//     return this.chatCompletion(messages, {
+//       temperature: 0.7,
+//       maxTokens: 300,
+//       timeout: 45000,
+//       retries: 1, // Moins de retries pour le chat en temps réel
+//     });
+//   }
+
+
 
   /**
    * Générer des suggestions de correction
