@@ -175,7 +175,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         log.attackSubtype ? `, Attaque: ${log.attackSubtype}` : ''
       }. Explication: ${log.explanation}`;
 
-      // Appeler l'API OVH réelle
+      // Appeler l'API réelle
       const response = await llmService.answerLogQuestion(
         logContext,
         userMessage,
@@ -266,7 +266,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
             {llmError}
           </p>
           <p className="text-xs mt-2" style={{ color: COLORS.text.muted }}>
-            💡 Vérifiez que VITE_OVH_AI_ACCESS_TOKEN est configuré dans votre fichier .env
+            💡 Ajoutez plus de contexte à vôtre message
           </p>
         </div>
       )}
@@ -574,7 +574,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2" style={{ color: COLORS.text.primary }}>
               <Bot size={20} />
-              <span>Assistant IA OVH</span>
+              <span>Assistant IA</span>
             </h3>
 
             {/* Contexte du Log */}

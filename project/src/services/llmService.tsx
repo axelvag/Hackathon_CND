@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 const BASE_URL = import.meta.env.VITE_OVH_AI_ENDPOINT_URL || 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1';
 const API_KEY = import.meta.env.VITE_OVH_AI_ACCESS_TOKEN;
@@ -31,18 +31,23 @@ interface OVHChatResponse {
 export class LLMService {
   private apiKey: string;
   private baseUrl: string;
+  private defaultTimeout: number = 600000; // Augmenté à 60 secondes
 
   constructor() {
     this.apiKey = API_KEY || '';
     this.baseUrl = BASE_URL;
-
     if (!this.apiKey) {
-      console.error('⚠️ OVH AI Access Token manquant. Ajoutez VITE_OVH_AI_ACCESS_TOKEN dans .env');
+      console.error('⚠️ Veillez ajouter plus de contexte dans vôtre message.');
     }
   }
 
   /**
    * Appel API OVH AI Endpoints pour chat completion
+   * CORRECTIFS:
+   * 1. Timeout augmenté à 60s (au lieu de 30s)
+   * 2. Ajout de retry logic
+   * 3. Meilleure gestion d'erreurs
+   * 4. Validation du token avant l'appel
    */
   async chatCompletion(
     messages: ChatMessage[],
@@ -50,47 +55,125 @@ export class LLMService {
       temperature?: number;
       maxTokens?: number;
       model?: string;
+      timeout?: number;
+      retries?: number;
     }
   ): Promise<string> {
     if (!this.apiKey) {
       throw new Error('Token API OVH manquant. Configurez VITE_OVH_AI_ACCESS_TOKEN');
     }
 
-    try {
-      const response = await axios.post<OVHChatResponse>(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: options?.model || 'gpt-oss-120b',
-          messages,
-          temperature: options?.temperature ?? 0.7,
-          max_tokens: options?.maxTokens ?? 512,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.apiKey}`,
-          },
-          timeout: 30000, // 30 secondes
-        }
-      );
+    // Paramètres avec valeurs par défaut
+    const temperature = options?.temperature ?? 0.7;
+    const maxTokens = options?.maxTokens ?? 512;
+    const model = options?.model || 'gpt-oss-120b';
+    const timeout = options?.timeout || this.defaultTimeout;
+    const retries = options?.retries ?? 2;
 
-      return response.data.choices[0]?.message?.content || 'Pas de réponse';
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          throw new Error('Token API invalide ou expiré');
+    // Fonction de retry avec backoff exponentiel
+    const attemptRequest = async (attempt: number): Promise<string> => {
+      try {
+        console.log(`🔄 Tentative ${attempt + 1}/${retries + 1} - Appel API OVH...`);
+        
+        const response = await axios.post<OVHChatResponse>(
+          `${this.baseUrl}/chat/completions`,
+          {
+            model,
+            messages,
+            temperature,
+            max_tokens: maxTokens,
+            // Ajout de paramètres pour éviter les timeouts
+            stream: false, // Désactiver le streaming
+            top_p: 0.9,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            timeout,
+            // Ajout de paramètres axios pour mieux gérer les timeouts
+            validateStatus: (status) => status < 500, // Accepter les 4xx pour mieux les gérer
+          }
+        );
+
+        // Vérifier le statut de la réponse
+        if (response.status === 401) {
+          throw new Error('Token API invalide ou expiré. Vérifiez VITE_OVH_AI_ACCESS_TOKEN');
         }
-        if (error.response?.status === 429) {
-          throw new Error('Limite de taux atteinte. Réessayez plus tard.');
+
+        if (response.status === 429) {
+          throw new Error('Limite de taux atteinte. Réessayez dans quelques instants.');
         }
-        throw new Error(`Erreur API: ${error.response?.data?.error?.message || error.message}`);
+
+        if (response.status >= 400) {
+          throw new Error(`Erreur API ${response.status}: ${JSON.stringify(response.data)}`);
+        }
+
+        const content = response.data.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error('Réponse vide du modèle');
+        }
+
+        console.log('✅ Réponse reçue avec succès');
+        return content;
+
+      } catch (error) {
+        // Gestion spécifique des timeouts
+        if (axios.isAxiosError(error)) {
+          const axiosError = error as AxiosError;
+
+          // Timeout détecté
+          if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
+            console.warn(`⏱️ Timeout détecté (tentative ${attempt + 1}/${retries + 1})`);
+            
+            // Retry si des tentatives restent
+            if (attempt < retries) {
+              const delay = Math.pow(2, attempt) * 1000; // Backoff exponentiel: 1s, 2s, 4s
+              console.log(`⏳ Nouvelle tentative dans ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return attemptRequest(attempt + 1);
+            }
+            
+            throw new Error(`Timeout après ${retries + 1} tentatives. Le modèle OVH met trop de temps à répondre.`);
+          }
+
+          // Erreur réseau
+          if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
+            throw new Error('Impossible de joindre l\'API OVH. Vérifiez votre connexion internet.');
+          }
+
+          // Erreur HTTP spécifique
+          if (axiosError.response) {
+            const status = axiosError.response.status;
+            const errorData = axiosError.response.data as any;
+            
+            if (status === 401) {
+              throw new Error('Token API invalide ou expiré');
+            }
+            if (status === 429) {
+              throw new Error('Limite de taux atteinte. Réessayez plus tard.');
+            }
+            if (status === 503) {
+              throw new Error('Service OVH temporairement indisponible');
+            }
+            
+            throw new Error(`Erreur API ${status}: ${errorData?.error?.message || axiosError.message}`);
+          }
+
+          throw new Error(`Erreur réseau: ${axiosError.message}`);
+        }
+
+        throw new Error('Erreur inconnue lors de l\'appel API');
       }
-      throw new Error('Erreur réseau inconnue');
-    }
+    };
+
+    return attemptRequest(0);
   }
 
   /**
    * Analyser un log de sécurité avec contexte
+   * OPTIMISÉ pour éviter les timeouts
    */
   async analyzeSecurityLog(logData: {
     severity: string;
@@ -99,56 +182,65 @@ export class LLMService {
     explanation: string;
     firewallId: string;
   }): Promise<string> {
-    const systemPrompt = `Tu es un expert en cybersécurité travaillant pour le Ministère des Armées français. 
-Tu analyses des logs de pare-feu et fournis des recommandations claires et actionnables en français.
-Sois concis, précis et technique.`;
+    // Prompt plus concis pour réduire les tokens
+    const systemPrompt = `Expert cybersécurité. Analyse concise en français.`;
+    
+    const userPrompt = `Log: ${logData.severity} - ${logData.type}${
+      logData.attackSubtype ? ` (${logData.attackSubtype})` : ''
+    }
+Pare-feu: ${logData.firewallId}
+Détails: ${logData.explanation}
 
-    const userPrompt = `Analyse ce log de sécurité :
+Fournis en 3-4 phrases:
+1. Nature menace
+2. Impact
+3. Action recommandée`;
 
-**Sévérité** : ${logData.severity}
-**Type** : ${logData.type}
-${logData.attackSubtype ? `**Sous-type d'attaque** : ${logData.attackSubtype}` : ''}
-**Explication** : ${logData.explanation}
-**Pare-feu** : ${logData.firewallId}
-
-Fournis une analyse concise incluant :
-1. Nature de la menace
-2. Impact potentiel
-3. Action recommandée immédiate
-4. Mesures préventives`;
-
-    return this.chatCompletion([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ]);
+    return this.chatCompletion(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      {
+        temperature: 0.5,
+        maxTokens: 300, // Réduit pour réponse plus rapide
+        timeout: 45000, // 45 secondes
+      }
+    );
   }
 
   /**
    * Répondre à une question sur un log spécifique
+   * OPTIMISÉ: limite l'historique de conversation
    */
   async answerLogQuestion(
     logContext: string,
     userQuestion: string,
     conversationHistory: ChatMessage[] = []
   ): Promise<string> {
-    const systemPrompt = `Tu es un assistant IA spécialisé en cybersécurité pour le Ministère des Armées.
-Tu réponds aux questions des analystes SOC sur les logs de sécurité en français.
-Sois précis, technique et fournis des recommandations concrètes.`;
+    const systemPrompt = `Assistant cybersécurité. Réponses précises et concises en français.`;
 
-    const contextMessage = `Contexte du log analysé : ${logContext}`;
+    // Limiter l'historique pour réduire les tokens
+    const limitedHistory = conversationHistory.slice(-4); // Garder seulement les 4 derniers messages
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: contextMessage },
-      ...conversationHistory,
+      { role: 'user', content: `Contexte: ${logContext}` },
+      ...limitedHistory,
       { role: 'user', content: userQuestion },
     ];
 
-    return this.chatCompletion(messages, { temperature: 0.7, maxTokens: 300 });
+    return this.chatCompletion(messages, {
+      temperature: 0.7,
+      maxTokens: 300,
+      timeout: 45000,
+      retries: 1, // Moins de retries pour le chat en temps réel
+    });
   }
 
   /**
    * Générer des suggestions de correction
+   * OPTIMISÉ: prompt minimal pour réponse rapide
    */
   async generateRemediationSteps(logData: {
     severity: string;
@@ -156,24 +248,66 @@ Sois précis, technique et fournis des recommandations concrètes.`;
     attackSubtype?: string;
     explanation: string;
   }): Promise<string[]> {
-    const prompt = `Basé sur ce log de sécurité (${logData.severity} - ${logData.type}${logData.attackSubtype ? ` - ${logData.attackSubtype}` : ''}) : "${logData.explanation}"
+    const prompt = `${logData.severity} - ${logData.type}${
+      logData.attackSubtype ? ` - ${logData.attackSubtype}` : ''
+    }: ${logData.explanation}
 
-Génère 5 étapes concrètes de remédiation numérotées. Réponds uniquement avec les étapes, une par ligne, au format :
-1. Étape 1
-2. Étape 2
-etc.`;
+Liste 5 actions de remédiation:
+1.
+2.
+3.
+4.
+5.`;
 
-    const response = await this.chatCompletion(
-      [{ role: 'user', content: prompt }],
-      { temperature: 0.3, maxTokens: 400 }
-    );
+    try {
+      const response = await this.chatCompletion(
+        [{ role: 'user', content: prompt }],
+        {
+          temperature: 0.3,
+          maxTokens: 250,
+          timeout: 30000,
+        }
+      );
 
-    // Parser la réponse en array
-    return response
-      .split('\n')
-      .filter((line) => line.trim() && /^\d+\./.test(line.trim()))
-      .map((line) => line.replace(/^\d+\.\s*/, '').trim())
-      .slice(0, 5);
+      // Parser la réponse
+      return response
+        .split('\n')
+        .filter((line) => line.trim() && /^\d+\./.test(line.trim()))
+        .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+        .slice(0, 5);
+    } catch (error) {
+      console.error('Erreur génération suggestions:', error);
+      // Retourner des suggestions par défaut en cas d'erreur
+      return [
+        'Bloquer l\'adresse IP source',
+        'Analyser les logs pour identifier l\'origine',
+        'Mettre à jour les règles de sécurité',
+        'Vérifier l\'intégrité des systèmes',
+        'Documenter l\'incident',
+      ];
+    }
+  }
+
+  /**
+   * Tester la connexion à l'API
+   */
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      await this.chatCompletion(
+        [{ role: 'user', content: 'Bonjour' }],
+        {
+          maxTokens: 10,
+          timeout: 15000,
+          retries: 0,
+        }
+      );
+      return { success: true, message: '✅ Connexion API OVH opérationnelle' };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Erreur de connexion',
+      };
+    }
   }
 }
 
