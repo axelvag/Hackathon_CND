@@ -134,8 +134,21 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
     'Contacter l\'équipe de sécurité pour une analyse approfondie',
   ];
 
+  // Couleur verte plus claire et visible pour le dark mode
+  const resolvedGreen = '#10b981'; // Vert emerald plus clair et visible
+  const resolvedGreenBg = isResolved ? `${resolvedGreen}25` : 'transparent';
+  const resolvedGreenBorder = isResolved ? `${resolvedGreen}60` : 'none';
+
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6 transition-all duration-500 ease-in-out rounded-lg p-6"
+      style={{
+        backgroundColor: resolvedGreenBg,
+        border: isResolved 
+          ? `2px solid ${resolvedGreenBorder}` 
+          : 'none',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -153,7 +166,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </button>
         <div className="flex items-center space-x-2">
           {isResolved ? (
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg" style={{ backgroundColor: `${COLORS.success}20`, color: COLORS.success }}>
+            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg" style={{ backgroundColor: `${resolvedGreen}30`, color: resolvedGreen }}>
               <CheckCircle2 size={18} />
               <span className="text-sm font-medium">Résolu</span>
             </div>
@@ -178,12 +191,14 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         <div className="lg:col-span-2 space-y-6">
           {/* Informations principales */}
           <div
-            className="rounded-lg p-6 border"
+            className="rounded-lg p-6 border transition-all duration-500"
             style={{
               backgroundColor: COLORS.background.card,
               borderColor: COLORS.border,
               borderLeftWidth: '4px',
-              borderLeftColor: getSeverityColor(log.severity),
+              borderLeftColor: isResolved 
+                ? resolvedGreen 
+                : getSeverityColor(log.severity),
             }}
           >
             <div className="flex items-start justify-between mb-4">

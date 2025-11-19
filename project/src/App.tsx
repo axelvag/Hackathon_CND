@@ -24,12 +24,41 @@ import {
 const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
 const LOG_GENERATION_MAX_DELAY = 8; // Délai maximum entre chaque log (en secondes)
 
-function App() {
-  const [logs, setLogs] = useState<SecurityLog[]>([]);
-  const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(new Set());
-  const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(new Set());
+// Initialiser l'état depuis localStorage de manière synchrone
+function getInitialLogState() {
+  try {
+    const logState = loadLogState();
+    return {
+      resolvedLogs: logState.resolvedLogs,
+      dismissedLogs: logState.dismissedLogs,
+    };
+  } catch (error) {
+    console.error('Error loading initial log state:', error);
+    return {
+      resolvedLogs: new Set<string>(),
+      dismissedLogs: new Set<string>(),
+    };
+  }
+}
 
-  // Charger les logs depuis localStorage
+function App() {
+  const initialState = getInitialLogState();
+  // Initialiser les logs depuis localStorage de manière synchrone
+  const initialLogs = (() => {
+    try {
+      const savedLogs = loadGeneratedLogs();
+      return savedLogs && savedLogs.length > 0 ? savedLogs : [];
+    } catch (error) {
+      console.error('Error loading initial logs:', error);
+      return [];
+    }
+  })();
+  
+  const [logs, setLogs] = useState<SecurityLog[]>(initialLogs);
+  const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(initialState.resolvedLogs);
+  const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(initialState.dismissedLogs);
+
+  // Charger les logs depuis localStorage (pour synchronisation entre onglets)
   useEffect(() => {
     const savedLogs = loadGeneratedLogs();
     if (savedLogs && savedLogs.length > 0) {
