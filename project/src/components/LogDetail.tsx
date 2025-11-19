@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle,
 import { SecurityLog, formatLogId } from '../types';
 import { useColors } from '../contexts/ThemeContext';
 import { formatRelativeTime } from '../utils/timeUtils';
-import { loadLogComments, addLogComment, LogComment } from '../utils/storage';
+import { loadLogComments, addLogComment, LogComment, loadLogChatMessages, saveLogChatMessages, ChatMessage } from '../utils/storage';
 import { llmService } from '../services/llmService';
 
 interface LogDetailProps {
@@ -14,11 +14,6 @@ interface LogDetailProps {
   onBack: () => void;
   onResolve: () => void;
   onDismiss: () => void;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
 }
 
 export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve }: LogDetailProps) {
@@ -66,6 +61,35 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
       window.removeEventListener('logCommentUpdated', handleCommentUpdate as EventListener);
     };
   }, [log.id]);
+
+  // Charger les messages de chat depuis localStorage
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  useEffect(() => {
+    const loadedMessages = loadLogChatMessages(log.id);
+    setChatMessages(loadedMessages);
+    setIsInitialLoad(false);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cyberdefense_log_chat_messages') {
+        const loadedMessages = loadLogChatMessages(log.id);
+        setChatMessages(loadedMessages);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [log.id]);
+
+  // Sauvegarder les messages de chat dans localStorage à chaque changement (sauf au chargement initial)
+  useEffect(() => {
+    if (!isInitialLoad && chatMessages.length > 0) {
+      saveLogChatMessages(log.id, chatMessages);
+    }
+  }, [chatMessages, log.id, isInitialLoad]);
 
   // Scroll automatique pour les messages du chat IA
   useEffect(() => {

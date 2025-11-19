@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   RESOLVED_LOGS: 'cyberdefense_resolved_logs',
   DISMISSED_LOGS: 'cyberdefense_dismissed_logs',
   LOG_COMMENTS: 'cyberdefense_log_comments',
+  LOG_CHAT_MESSAGES: 'cyberdefense_log_chat_messages',
   LAST_LOG_ID: 'cyberdefense_last_log_id',
 } as const;
 
@@ -236,6 +237,57 @@ export function getNextLogId(): number {
 }
 
 /**
+ * Interface pour les messages de chat
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: Date;
+}
+
+/**
+ * Charge tous les messages de chat depuis le localStorage
+ */
+function loadAllChatMessages(): Record<string, any[]> {
+  try {
+    const messages = localStorage.getItem(STORAGE_KEYS.LOG_CHAT_MESSAGES);
+    return messages ? JSON.parse(messages) : {};
+  } catch (error) {
+    console.error('Error loading chat messages from localStorage:', error);
+    return {};
+  }
+}
+
+/**
+ * Charge les messages de chat d'un log spécifique
+ */
+export function loadLogChatMessages(logId: number): ChatMessage[] {
+  const allMessages = loadAllChatMessages();
+  const messages = allMessages[logId.toString()] || [];
+  return messages.map((m) => ({
+    ...m,
+    timestamp: m.timestamp ? new Date(m.timestamp) : undefined,
+  }));
+}
+
+/**
+ * Sauvegarde les messages de chat d'un log dans le localStorage
+ */
+export function saveLogChatMessages(logId: number, messages: ChatMessage[]): void {
+  try {
+    const allMessages = loadAllChatMessages();
+    allMessages[logId.toString()] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp ? m.timestamp.toISOString() : undefined,
+    }));
+    localStorage.setItem(STORAGE_KEYS.LOG_CHAT_MESSAGES, JSON.stringify(allMessages));
+  } catch (error) {
+    console.error('Error saving log chat messages to localStorage:', error);
+  }
+}
+
+/**
  * Efface tous les logs du localStorage
  */
 export function clearAllLogs(): void {
@@ -244,6 +296,7 @@ export function clearAllLogs(): void {
     localStorage.removeItem(STORAGE_KEYS.RESOLVED_LOGS);
     localStorage.removeItem(STORAGE_KEYS.DISMISSED_LOGS);
     localStorage.removeItem(STORAGE_KEYS.LOG_COMMENTS);
+    localStorage.removeItem(STORAGE_KEYS.LOG_CHAT_MESSAGES);
     localStorage.removeItem(STORAGE_KEYS.LAST_LOG_ID);
   } catch (error) {
     console.error('Error clearing all logs:', error);
