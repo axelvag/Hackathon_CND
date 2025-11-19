@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3, Sun, Moon } from 'lucide-react';
+import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../constants/theme';
 
@@ -97,6 +97,17 @@ export default function Navigation() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <Link
+              to="/settings"
+              className="flex items-center justify-center w-10 h-10 rounded-md transition-all hover:opacity-80"
+              style={{
+                backgroundColor: location.pathname === '/settings' ? COLORS.background.hover : COLORS.background.card,
+                color: COLORS.text.primary,
+              }}
+              title="Paramètres"
+            >
+              <Settings size={20} />
+            </Link>
             <button
               onClick={toggleTheme}
               className="flex items-center justify-center w-10 h-10 rounded-md transition-all hover:opacity-80"

@@ -7,6 +7,7 @@ import Firewall from './components/Firewall';
 import LogDetail from './components/LogDetail';
 import { generateNewLog } from './utils/mockData';
 import Statistics from './components/Statistics';
+import Settings from './components/Settings';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { getColors } from './constants/theme';
 import { SeverityStats, SecurityLog } from './types';
@@ -18,8 +19,11 @@ import {
   saveDismissedLogs,
   getNextLogId,
   clearAllLogs,
-  STORAGE_KEYS
+  STORAGE_KEYS,
+  loadPhoneNumber,
+  loadNotificationsEnabled
 } from './utils/storage';
+import { callService } from './services/callService';
 
 // Configuration de la vitesse d'apparition des logs (en secondes)
 const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
@@ -155,6 +159,20 @@ function AppContent() {
         return updatedLogs;
       });
 
+      // Vérifier si on doit déclencher un appel téléphonique
+      // Si le log est HIGH et que les notifications sont activées
+      if (newLog.severity === 'High') {
+        const notificationsEnabled = loadNotificationsEnabled();
+        const phoneNumber = loadPhoneNumber();
+        
+        if (notificationsEnabled && phoneNumber) {
+          // Déclencher l'appel de manière asynchrone (ne pas bloquer l'UI)
+          callService.triggerCall(phoneNumber, newLog).catch((error) => {
+            console.error('Erreur lors du déclenchement de l\'appel téléphonique:', error);
+          });
+        }
+      }
+
       // Planifier le prochain log avec un délai aléatoire
       if (isActive) {
         const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
@@ -273,6 +291,7 @@ function AppContent() {
             element={<Firewall totalLogs={activeLogs.length} />} 
           />
           <Route path="/statistics" element={<Statistics logs={activeLogs} totalLogs={activeLogs.length} />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

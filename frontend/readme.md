@@ -11,4 +11,5 @@ npm install axios
 ```bash
 VITE_OVH_AI_ENDPOINT_URL=https://deepseek-r1-distill-llama-70b.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1
 VITE_OVH_AI_ACCESS_TOKEN=...........
+VITE_CALL_API_ENDPOINT=http://localhost:8000/call
 ```
