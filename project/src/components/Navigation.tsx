@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../constants/theme';
-import logo from '../../public/Ministère_des_Armées.webp';
 
 export default function Navigation() {
   const location = useLocation();
@@ -37,7 +36,7 @@ export default function Navigation() {
           <div className="flex items-center space-x-8">
             <div className="flex items-center space-x-3">
               <img 
-                src={logo} 
+                src="/Ministère_des_Armées.webp" 
                 alt="Ministère des Armées" 
                 className="h-12 w-auto"
               />
