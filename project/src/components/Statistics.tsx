@@ -117,15 +117,17 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
     .map(([name, count]) => ({ name, count }));
 
   // 7. Score de santé global
-  const healthScore = Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        (severityData[0].value * 3 + severityData[1].value * 1.5 + severityData[2].value * 0.5) /
-          totalLogs
-    )
-  );
+  const healthScore = totalLogs > 0
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          100 -
+            (severityData[0].value * 3 + severityData[1].value * 1.5 + severityData[2].value * 0.5) /
+              totalLogs
+        )
+      )
+    : 100; // Si aucun log, score parfait
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return COLORS.success;
@@ -134,7 +136,9 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
   };
 
   // 8. Taux critique
-  const criticalRate = ((severityData[0].value / totalLogs) * 100).toFixed(1);
+  const criticalRate = totalLogs > 0
+    ? ((severityData[0].value / totalLogs) * 100).toFixed(1)
+    : '0.0';
 
   // 9. Heatmap data (simplified - by hour)
   const heatmapData = Array.from({ length: 24 }, (_, hour) => {
@@ -535,7 +539,7 @@ export default function Statistics({ logs, totalLogs }: StatisticsProps) {
         </h3>
         <div className="grid grid-cols-12 gap-1">
           {heatmapData.map((item, index) => {
-            const opacity = item.count / maxHeatmapValue;
+            const opacity = maxHeatmapValue > 0 ? item.count / maxHeatmapValue : 0;
             return (
               <div
                 key={index}
