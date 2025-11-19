@@ -116,9 +116,9 @@ export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: Dash
     </div>
   );
 
-  const highPercentage = (stats.high / totalLogs) * 100;
-  const mediumPercentage = (stats.medium / totalLogs) * 100;
-  const lowPercentage = (stats.low / totalLogs) * 100;
+  const highPercentage = totalLogs > 0 ? (stats.high / totalLogs) * 100 : 0;
+  const mediumPercentage = totalLogs > 0 ? (stats.medium / totalLogs) * 100 : 0;
+  const lowPercentage = totalLogs > 0 ? (stats.low / totalLogs) * 100 : 0;
 
   return (
     <div className="space-y-6">
