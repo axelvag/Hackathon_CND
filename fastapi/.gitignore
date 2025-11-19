@@ -1,0 +1,18 @@
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+firewall-log-analysis-api.egg-info/
+
+# Packaging
+*.egg-info/
+build/
+dist/
+*.egg
+
+# Environment
+.venv/
+venv/
+env/
+.env
