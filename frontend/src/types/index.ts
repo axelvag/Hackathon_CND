@@ -9,6 +9,20 @@ export interface SecurityLog {
   explanation: string;
   type: LogType;
   attackSubtype?: string;
+  // Métadonnées des logs bruts
+  srcIp?: string;
+  dstIp?: string;
+  srcPort?: number;
+  dstPort?: number;
+  protocol?: string;
+  action?: string;
+  bytes?: number;
+  durationMs?: number;
+  ruleId?: string;
+  sessionId?: string;
+  user?: string;
+  status?: string;
+  flags?: string;
 }
 
 /**

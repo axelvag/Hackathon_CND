@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2, ChevronUp, ChevronDown, Code, Network, Database, Activity } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
 import { useColors } from '../contexts/ThemeContext';
+import { useView } from '../contexts/ViewContext';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { loadLogComments, addLogComment, LogComment, loadLogChatMessages, saveLogChatMessages, ChatMessage } from '../utils/storage';
 import { llmService } from '../services/llmService';
@@ -20,6 +21,7 @@ interface LogDetailProps {
 
 export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve }: LogDetailProps) {
   const COLORS = useColors();
+  const { viewMode } = useView();
   const navigate = useNavigate();
   const [comments, setComments] = useState<LogComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -243,7 +245,10 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           ? `2px solid ${resolvedGreenBorder}` 
           : 'none',
         height: 'calc(100vh - 64px - 64px)', // 100vh - navigation (64px) - padding main (64px = 32px top + 32px bottom)
-        overflow: 'hidden',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {showTutorial && (
@@ -320,7 +325,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+      <div className={`grid grid-cols-1 lg:grid-cols-4 gap-6 ${viewMode === 'expert' ? 'mb-6' : 'flex-1 min-h-0'}`}>
         {/* Colonne gauche - Suggestions (25%) */}
         <div className="lg:col-span-1 flex flex-col min-h-0">
           {/* Suggestions de correction */}
@@ -450,7 +455,7 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
               {log.explanation}
             </p>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: COLORS.border }}>
+            <div className={`grid ${viewMode === 'expert' ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'} gap-4 pt-4 border-t`} style={{ borderColor: COLORS.border }}>
               <div className="flex items-center space-x-2">
                 <Shield size={16} style={{ color: COLORS.accent.deepBlue }} />
                 <div>
@@ -469,6 +474,19 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
                   </p>
                 </div>
               </div>
+              {viewMode === 'expert' && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <Clock size={16} style={{ color: COLORS.text.muted }} />
+                    <div>
+                      <p className="text-xs" style={{ color: COLORS.text.muted }}>Timestamp ISO</p>
+                      <p className="text-xs font-mono" style={{ color: COLORS.text.secondary }}>
+                        {log.timestamp.toISOString()}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -748,6 +766,212 @@ export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve 
           </div>
         </div>
       </div>
+
+      {/* Section métadonnées techniques EDR en mode expert - Pleine largeur */}
+      {viewMode === 'expert' && (
+        <div className="mt-6 pt-6 border-t flex-shrink-0" style={{ borderColor: COLORS.border }}>
+          <div
+            className="rounded-lg p-6 border"
+            style={{
+              backgroundColor: COLORS.background.card,
+              borderColor: COLORS.border,
+            }}
+          >
+            <h3 className="text-xl font-bold mb-6 flex items-center space-x-3" style={{ color: COLORS.text.primary }}>
+              <Code size={24} style={{ color: COLORS.accent.deepBlue }} />
+              <span>Métadonnées techniques</span>
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+              {/* Informations réseau */}
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Network size={18} style={{ color: COLORS.accent.deepBlue }} />
+                  <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Contexte réseau</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Source IP:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.srcIp || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Destination IP:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.dstIp || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Source Port:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.srcPort || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Destination Port:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.dstPort || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Protocole:</span>
+                    <p className="text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.protocol || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Action:</span>
+                    <p className="text-xs mt-0.5 font-semibold" style={{ 
+                      color: log.action === 'ALLOW' ? COLORS.success : 
+                             log.action === 'DENY' ? COLORS.severity.medium : COLORS.severity.high 
+                    }}>
+                      {log.action || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Bytes:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.bytes ? `${log.bytes.toLocaleString()}` : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Durée:</span>
+                    <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                      {log.durationMs !== undefined ? `${log.durationMs} ms` : 'N/A'}
+                    </p>
+                  </div>
+                  {log.flags && (
+                    <div className="col-span-2">
+                      <span className="text-xs" style={{ color: COLORS.text.muted }}>Flags:</span>
+                      <p className="font-mono text-xs mt-0.5" style={{ color: COLORS.text.secondary }}>
+                        {log.flags}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Informations système et session */}
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Activity size={18} style={{ color: COLORS.accent.deepBlue }} />
+                  <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Session & Système</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Règle ID:</span>
+                    <p className="font-mono text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {log.ruleId || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Session ID:</span>
+                    <p className="font-mono text-xs mt-1 break-all" style={{ color: COLORS.text.secondary }}>
+                      {log.sessionId || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>User:</span>
+                    <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {log.user || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Status:</span>
+                    <p className="text-xs mt-1 font-semibold" style={{ 
+                      color: log.status === 'OK' ? COLORS.success : COLORS.severity.high 
+                    }}>
+                      {log.status || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Firewall ID:</span>
+                    <p className="font-mono text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {log.firewallId || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* IOC et signatures */}
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Database size={18} style={{ color: COLORS.accent.deepBlue }} />
+                  <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Analyse & Corrélations</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Règle IDS:</span>
+                    <p className="font-mono text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {log.ruleId ? `EDR-${log.type === 'Attack' ? 'ATK' : 'BUG'}-${log.ruleId}` : `EDR-${log.type === 'Attack' ? 'ATK' : 'BUG'}-${log.id}`}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Score de risque:</span>
+                    <p className="text-xs mt-1 font-semibold" style={{ 
+                      color: log.severity === 'High' ? COLORS.severity.high : 
+                             log.severity === 'Medium' ? COLORS.severity.medium : COLORS.severity.low 
+                    }}>
+                      {log.severity === 'High' ? '85/100' : log.severity === 'Medium' ? '55/100' : '25/100'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Raison:</span>
+                    <p className="text-xs mt-1 break-all" style={{ color: COLORS.text.secondary }}>
+                      {log.explanation || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: COLORS.text.muted }}>Corrélations:</span>
+                    <p className="text-xs mt-1" style={{ color: COLORS.text.secondary }}>
+                      {similarLogs.length} log(s) similaire(s)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Raw data en mode expert */}
+            <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: COLORS.background.hover, borderColor: COLORS.border }}>
+              <div className="flex items-center space-x-2 mb-3">
+                <Code size={18} style={{ color: COLORS.accent.deepBlue }} />
+                <span className="text-sm font-semibold" style={{ color: COLORS.text.primary }}>Raw Log Data (JSON)</span>
+              </div>
+              <pre className="text-xs p-4 rounded overflow-x-auto" style={{ 
+                backgroundColor: COLORS.background.card, 
+                color: COLORS.text.secondary,
+                fontFamily: 'monospace',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {JSON.stringify({
+                  id: log.id,
+                  timestamp: log.timestamp.toISOString(),
+                  firewall_id: log.firewallId,
+                  src_ip: log.srcIp,
+                  dst_ip: log.dstIp,
+                  src_port: log.srcPort,
+                  dst_port: log.dstPort,
+                  protocol: log.protocol,
+                  action: log.action,
+                  bytes: log.bytes,
+                  duration_ms: log.durationMs,
+                  rule_id: log.ruleId,
+                  session_id: log.sessionId,
+                  user: log.user,
+                  reason: log.explanation,
+                  status: log.status,
+                  flags: log.flags,
+                  severity: log.severity,
+                  type: log.type,
+                  attackSubtype: log.attackSubtype,
+                }, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

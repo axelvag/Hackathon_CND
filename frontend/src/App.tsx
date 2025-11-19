@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, Link, useParams } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
@@ -24,6 +24,7 @@ import {
   loadNotificationsEnabled
 } from './utils/storage';
 import { callService } from './services/callService';
+import { ViewProvider } from './contexts/ViewContext';
 
 // Configuration de la vitesse d'apparition des logs (en secondes)
 const LOG_GENERATION_MIN_DELAY = 5; // Délai minimum entre chaque log (en secondes)
@@ -64,6 +65,9 @@ function AppContent() {
   const [logs, setLogs] = useState<SecurityLog[]>(initialLogs);
   const [resolvedLogs, setResolvedLogs] = useState<Set<string>>(initialState.resolvedLogs);
   const [dismissedLogs, setDismissedLogs] = useState<Set<string>>(initialState.dismissedLogs);
+  
+  // Référence pour stocker les intervalles d'appels téléphoniques par log ID
+  const callIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Charger les logs depuis localStorage (pour synchronisation entre onglets)
   useEffect(() => {
@@ -140,149 +144,71 @@ function AppContent() {
   // Générer automatiquement de nouveaux logs
   useEffect(() => {
     let currentTimeout: NodeJS.Timeout | null = null;
-    let highLogTimeout: NodeJS.Timeout | null = null;
     let isActive = true;
 
-    // Fonction utilitaire pour ajouter un log
-    const addLog = (log: SecurityLog, notificationsEnabled: boolean) => {
+    const generateAndAddLog = () => {
+      if (!isActive) return;
+      
+      const newLog = generateNewLog(getNextLogId);
       setLogs((prevLogs) => {
         // Vérifier que le log n'existe pas déjà (par sécurité)
-        const logExists = prevLogs.some(l => l.id === log.id);
+        const logExists = prevLogs.some(log => log.id === newLog.id);
         if (logExists) {
           return prevLogs;
         }
         // Ajouter le nouveau log au début de la liste
-        const updatedLogs = [log, ...prevLogs];
+        const updatedLogs = [newLog, ...prevLogs];
         // Sauvegarder dans localStorage
         saveGeneratedLogs(updatedLogs);
         return updatedLogs;
       });
 
-      // Vérifier si on doit déclencher un appel téléphonique
-      if (log.severity === 'High' && notificationsEnabled) {
+      // Vérifier si on doit déclencher des appels téléphoniques périodiques
+      // Si le log est HIGH et que les notifications sont activées
+      if (newLog.severity === 'High') {
+        const notificationsEnabled = loadNotificationsEnabled();
         const phoneNumber = loadPhoneNumber();
-        if (phoneNumber) {
-          // Déclencher l'appel de manière asynchrone (ne pas bloquer l'UI)
-          callService.triggerCall(phoneNumber, log).catch((error) => {
+        
+        if (notificationsEnabled && phoneNumber) {
+          // Déclencher le premier appel immédiatement
+          callService.triggerCall(phoneNumber, newLog).catch((error) => {
             console.error('Erreur lors du déclenchement de l\'appel téléphonique:', error);
           });
+          
+          // Démarrer les appels périodiques toutes les 15 à 30 secondes
+          const startPeriodicCalls = () => {
+            const getRandomDelay = () => {
+              const minDelay = 15000; // 15 secondes
+              const maxDelay = 30000; // 30 secondes
+              return Math.random() * (maxDelay - minDelay) + minDelay;
+            };
+            
+            const scheduleNextCall = () => {
+              const interval = setTimeout(() => {
+                // Vérifier que les notifications sont toujours activées et que le log existe toujours
+                const stillEnabled = loadNotificationsEnabled();
+                const stillPhoneNumber = loadPhoneNumber();
+                
+                if (stillEnabled && stillPhoneNumber) {
+                  callService.triggerCall(stillPhoneNumber, newLog).catch((error) => {
+                    console.error('Erreur lors du déclenchement de l\'appel téléphonique périodique:', error);
+                  });
+                  scheduleNextCall(); // Planifier le prochain appel
+                } else {
+                  // Arrêter si les notifications sont désactivées
+                  callIntervalsRef.current.delete(newLog.id);
+                }
+              }, getRandomDelay());
+              
+              callIntervalsRef.current.set(newLog.id, interval);
+            };
+            
+            scheduleNextCall();
+          };
+          
+          startPeriodicCalls();
         }
       }
-    };
-
-    // Fonction pour générer des logs Medium/Low uniquement
-    const generateMediumLowLog = () => {
-      if (!isActive) return;
-      
-      const notificationsEnabled = loadNotificationsEnabled();
-      let newLog = generateNewLog(getNextLogId);
-      
-      // Si le log généré est HIGH, le convertir en Medium ou Low
-      if (newLog.severity === 'High') {
-        // Convertir en Medium (70%) ou Low (30%)
-        if (Math.random() < 0.7) {
-          newLog.severity = 'Medium';
-        } else {
-          newLog.severity = 'Low';
-        }
-      }
-      
-      addLog(newLog, notificationsEnabled);
-
-      // Planifier le prochain log Medium/Low avec un délai aléatoire
-      if (isActive) {
-        const minDelayMs = LOG_GENERATION_MIN_DELAY * 1000;
-        const maxDelayMs = LOG_GENERATION_MAX_DELAY * 1000;
-        const delay = Math.random() * (maxDelayMs - minDelayMs) + minDelayMs;
-        currentTimeout = setTimeout(() => {
-          generateMediumLowLog();
-        }, delay);
-      }
-    };
-
-    // Fonction pour générer des logs HIGH uniquement
-    const generateHighLog = () => {
-      if (!isActive) return;
-      
-      const notificationsEnabled = loadNotificationsEnabled();
-      
-      // Ne générer des logs HIGH que si les notifications sont activées
-      if (!notificationsEnabled) {
-        return;
-      }
-
-      // Générer un log et forcer sa sévérité à HIGH
-      let newLog = generateNewLog(getNextLogId);
-      
-      // S'assurer que le log est bien HIGH en forçant le type et subtype appropriés
-      newLog.severity = 'High';
-      
-      // Choisir aléatoirement entre Bug et Attack pour les logs HIGH
-      const logType = Math.random() < 0.5 ? 'Bug' : 'Attack';
-      newLog.type = logType;
-      
-      if (logType === 'Bug') {
-        // Choisir un type de bug HIGH
-        const highBugTypes = ['malformed_timestamp', 'corrupt_line', 'invalid_ip'];
-        const bugExplanations: Record<string, string> = {
-          'malformed_timestamp': 'Timestamp invalide — tri temporel impossible.',
-          'corrupt_line': 'Ligne corrompue — impossible à parser correctement.',
-          'invalid_ip': 'IP invalide — données corrompues ou erronées.',
-        };
-        const selectedBugType = highBugTypes[Math.floor(Math.random() * highBugTypes.length)];
-        newLog.attackSubtype = selectedBugType;
-        newLog.explanation = bugExplanations[selectedBugType] || newLog.explanation;
-      } else {
-        // Choisir un type d'attaque HIGH
-        const highAttackTypes = ['brute_force_ssh', 'sql_injection', 'ddos', 'malware_download'];
-        const attackExplanations: Record<string, string> = {
-          'brute_force_ssh': 'Brute-force SSH — tentative de compromission de comptes.',
-          'sql_injection': 'Tentative d\'injection SQL — attaque applicative critique.',
-          'ddos': 'Potentiel DDoS détecté — schéma de volume ou de fréquence malveillant.',
-          'malware_download': 'Téléchargement malveillant — risque d\'infection.',
-        };
-        const selectedAttackType = highAttackTypes[Math.floor(Math.random() * highAttackTypes.length)];
-        newLog.attackSubtype = selectedAttackType;
-        newLog.explanation = attackExplanations[selectedAttackType] || newLog.explanation;
-      }
-      
-      addLog(newLog, notificationsEnabled);
-
-      // Planifier le prochain log HIGH dans 10-30 secondes
-      if (isActive && notificationsEnabled) {
-        const minHighDelayMs = 10 * 1000; // 10 secondes
-        const maxHighDelayMs = 30 * 1000; // 30 secondes
-        const highDelay = Math.random() * (maxHighDelayMs - minHighDelayMs) + minHighDelayMs;
-        highLogTimeout = setTimeout(() => {
-          generateHighLog();
-        }, highDelay);
-      }
-    };
-
-    // Fonction principale pour générer des logs (comportement normal quand notifications désactivées)
-    const generateAndAddLog = () => {
-      if (!isActive) return;
-      
-      const notificationsEnabled = loadNotificationsEnabled();
-      
-      // Si les notifications sont activées, utiliser la génération séparée
-      if (notificationsEnabled) {
-        generateMediumLowLog();
-        // Démarrer aussi la génération de logs HIGH
-        if (!highLogTimeout) {
-          const minHighDelayMs = 10 * 1000; // 10 secondes
-          const maxHighDelayMs = 30 * 1000; // 30 secondes
-          const initialHighDelay = Math.random() * (maxHighDelayMs - minHighDelayMs) + minHighDelayMs;
-          highLogTimeout = setTimeout(() => {
-            generateHighLog();
-          }, initialHighDelay);
-        }
-        return;
-      }
-      
-      // Comportement normal si les notifications ne sont pas activées
-      const newLog = generateNewLog(getNextLogId);
-      addLog(newLog, notificationsEnabled);
 
       // Planifier le prochain log avec un délai aléatoire
       if (isActive) {
@@ -309,9 +235,6 @@ function AppContent() {
       if (currentTimeout) {
         clearTimeout(currentTimeout);
       }
-      if (highLogTimeout) {
-        clearTimeout(highLogTimeout);
-      }
     };
   }, []);
 
@@ -322,6 +245,12 @@ function AppContent() {
       newSet.add(logId.toString());
       return newSet;
     });
+    // Arrêter les appels téléphoniques périodiques pour ce log
+    const interval = callIntervalsRef.current.get(logId);
+    if (interval) {
+      clearTimeout(interval);
+      callIntervalsRef.current.delete(logId);
+    }
   };
 
   // Fonction pour gérer le dismiss d'un log
@@ -331,6 +260,12 @@ function AppContent() {
       newSet.add(logId.toString());
       return newSet;
     });
+    // Arrêter les appels téléphoniques périodiques pour ce log
+    const interval = callIntervalsRef.current.get(logId);
+    if (interval) {
+      clearTimeout(interval);
+      callIntervalsRef.current.delete(logId);
+    }
   };
 
   // Fonction pour effacer tous les logs
@@ -480,7 +415,9 @@ function LogDetailRoute({
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ViewProvider>
+        <AppContent />
+      </ViewProvider>
     </ThemeProvider>
   );
 }

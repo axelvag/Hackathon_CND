@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Clock, Shield, AlertCircle, X } from 'lucide-react';
+import { Clock, Shield, AlertCircle, X, Network } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
 import { useColors } from '../contexts/ThemeContext';
+import { useView } from '../contexts/ViewContext';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 interface LogCardProps {
@@ -13,6 +14,7 @@ interface LogCardProps {
 
 export default function LogCard({ log, isResolved = false, onDismiss, onClick }: LogCardProps) {
   const COLORS = useColors();
+  const { viewMode } = useView();
   const [relativeTime, setRelativeTime] = useState(formatRelativeTime(log.timestamp));
 
   // Mettre à jour le temps relatif toutes les secondes
@@ -141,6 +143,24 @@ export default function LogCard({ log, isResolved = false, onDismiss, onClick }:
           <span className="text-xs">ID: {formatLogId(log.id)}</span>
         </div>
       </div>
+
+      {/* Informations techniques supplémentaires en mode expert */}
+      {viewMode === 'expert' && (
+        <div className="mt-3 pt-3 border-t space-y-2" style={{ borderColor: COLORS.border }}>
+          <div className="flex items-center space-x-1.5 text-xs">
+            <Clock size={12} style={{ color: COLORS.text.muted }} />
+            <span style={{ color: COLORS.text.muted }} className="font-mono">
+              {log.timestamp.toISOString()}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 text-xs">
+            <Network size={12} style={{ color: COLORS.text.muted }} />
+            <span style={{ color: COLORS.text.muted }}>
+              Type: {log.type} • Subtype: {log.attackSubtype || 'N/A'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

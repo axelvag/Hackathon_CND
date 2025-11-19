@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Phone, Bell, BellOff, Save, AlertCircle } from 'lucide-react';
+import { Phone, Bell, BellOff, Save, AlertCircle, User, UserCog } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../constants/theme';
+import { useView } from '../contexts/ViewContext';
 import { loadPhoneNumber, savePhoneNumber, loadNotificationsEnabled, saveNotificationsEnabled } from '../utils/storage';
 
 /**
@@ -64,6 +65,7 @@ function formatPhoneNumberForDisplay(phoneNumber: string): string {
 
 export default function Settings() {
   const { theme } = useTheme();
+  const { viewMode, toggleViewMode } = useView();
   const COLORS = getColors(theme);
   
   const [phoneInput, setPhoneInput] = useState('');
@@ -223,6 +225,53 @@ export default function Settings() {
           </button>
         </div>
 
+        {/* Section Mode d'affichage */}
+        <div className="mb-8">
+          <label
+            className="block text-sm font-medium mb-2"
+            style={{ color: COLORS.text.primary }}
+          >
+            Mode d'affichage
+          </label>
+          <p
+            className="text-xs mb-4"
+            style={{ color: COLORS.text.muted }}
+          >
+            Choisissez entre la vue technicien (simplifiée) et la vue ingénieur expert (détaillée avec métadonnées techniques)
+          </p>
+          
+          <button
+            onClick={toggleViewMode}
+            className="flex items-center space-x-3 px-4 py-3 rounded-md border transition-all hover:opacity-80 w-full"
+            style={{
+              backgroundColor: COLORS.background.hover,
+              borderColor: COLORS.border,
+            }}
+          >
+            {viewMode === 'expert' ? (
+              <UserCog size={20} style={{ color: COLORS.accent.deepBlue }} />
+            ) : (
+              <User size={20} style={{ color: COLORS.text.secondary }} />
+            )}
+            <div className="flex-1 text-left">
+              <span
+                className="text-sm font-medium block"
+                style={{ color: COLORS.text.primary }}
+              >
+                {viewMode === 'expert' ? 'Vue Ingénieur Expert' : 'Vue Technicien'}
+              </span>
+              <span
+                className="text-xs block mt-0.5"
+                style={{ color: COLORS.text.muted }}
+              >
+                {viewMode === 'expert' 
+                  ? 'Affichage détaillé avec métadonnées techniques, IOC, corrélations et données EDR'
+                  : 'Affichage simplifié pour la gestion quotidienne des logs'}
+              </span>
+            </div>
+          </button>
+        </div>
+
         {/* Bouton de sauvegarde */}
         <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: COLORS.border }}>
           <div>
@@ -234,7 +283,7 @@ export default function Settings() {
           </div>
           <button
             onClick={handleSave}
-            disabled={phoneInput.trim() && !phoneNumber}
+            disabled={!!(phoneInput.trim() && !phoneNumber)}
             className="flex items-center space-x-2 px-6 py-2 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: phoneInput.trim() && !phoneNumber ? COLORS.background.hover : COLORS.accent.deepBlue,

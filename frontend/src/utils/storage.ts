@@ -9,7 +9,10 @@ export const STORAGE_KEYS = {
   LAST_LOG_ID: 'cyberdefense_last_log_id',
   PHONE_NUMBER: 'cyberdefense_phone_number',
   NOTIFICATIONS_ENABLED: 'cyberdefense_notifications_enabled',
+  VIEW_MODE: 'cyberdefense_view_mode',
 } as const;
+
+export type ViewMode = 'technician' | 'expert';
 
 export interface LogComment {
   logId: number; // ID numérique du log
@@ -354,6 +357,30 @@ export function saveNotificationsEnabled(enabled: boolean): void {
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS_ENABLED, enabled.toString());
   } catch (error) {
     console.error('Error saving notifications enabled to localStorage:', error);
+  }
+}
+
+/**
+ * Charge le mode de vue depuis le localStorage
+ */
+export function loadViewMode(): ViewMode {
+  try {
+    const mode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
+    return (mode === 'expert' || mode === 'technician') ? mode : 'technician';
+  } catch (error) {
+    console.error('Error loading view mode from localStorage:', error);
+    return 'technician';
+  }
+}
+
+/**
+ * Sauvegarde le mode de vue dans le localStorage
+ */
+export function saveViewMode(mode: ViewMode): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, mode);
+  } catch (error) {
+    console.error('Error saving view mode to localStorage:', error);
   }
 }
 
