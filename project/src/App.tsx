@@ -7,7 +7,8 @@ import Firewall from './components/Firewall';
 import LogDetail from './components/LogDetail';
 import { generateNewLog } from './utils/mockData';
 import Statistics from './components/Statistics';
-import { COLORS } from './constants/theme';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { getColors } from './constants/theme';
 import { SeverityStats, SecurityLog } from './types';
 import { 
   loadGeneratedLogs, 
@@ -41,7 +42,9 @@ function getInitialLogState() {
   }
 }
 
-function App() {
+function AppContent() {
+  const { theme } = useTheme();
+  const COLORS = getColors(theme);
   const initialState = getInitialLogState();
   // Initialiser les logs depuis localStorage de manière synchrone
   const initialLogs = (() => {
@@ -289,6 +292,8 @@ function LogDetailRoute({
   onResolveLog: (logId: number) => void; 
   onDismissLog: (logId: number) => void;
 }) {
+  const { theme } = useTheme();
+  const COLORS = getColors(theme);
   const { logId } = useParams<{ logId: string }>();
   
   // Essayer de trouver le log par ID (format LOG-00001 ou nombre)
@@ -336,6 +341,14 @@ function LogDetailRoute({
       onResolve={() => onResolveLog(log.id)}
       onDismiss={() => onDismissLog(log.id)}
     />
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

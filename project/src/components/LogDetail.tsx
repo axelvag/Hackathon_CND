@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, MessageSquare, Send, Bot, User, AlertTriangle, Shield, Clock, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { loadLogComments, addLogComment, LogComment } from '../utils/storage';
 import { llmService } from '../services/llmService';
@@ -22,6 +22,7 @@ interface ChatMessage {
 }
 
 export default function LogDetail({ log, allLogs, isResolved, onBack, onResolve }: LogDetailProps) {
+  const COLORS = useColors();
   const navigate = useNavigate();
   const [comments, setComments] = useState<LogComment[]>([]);
   const [newComment, setNewComment] = useState('');

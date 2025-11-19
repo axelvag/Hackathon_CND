@@ -1,6 +1,6 @@
 import { Search, Trash2, X } from 'lucide-react';
 import { SecurityLog, SeverityLevel, LogType } from '../types';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import LogCard from './LogCard';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ export default function LogsView({
   onDismissLog,
   onClearAllLogs
 }: LogsViewProps) {
+  const COLORS = useColors();
   const navigate = useNavigate();
   const [filterSeverity, setFilterSeverity] = useState<SeverityLevel | 'All'>('All');
   const [filterType, setFilterType] = useState<LogType | 'All'>('All');

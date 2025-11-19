@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Activity, TrendingUp, Settings, Plus, X, Shield, Wifi, Clock } from 'lucide-react';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 
 interface FirewallProps {
   totalLogs: number;
@@ -15,6 +15,7 @@ interface FirewallConfig {
 }
 
 export default function Firewall({ totalLogs }: FirewallProps) {
+  const COLORS = useColors();
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedFirewall, setSelectedFirewall] = useState<string | null>(null);
   const [newFirewallConfig, setNewFirewallConfig] = useState<FirewallConfig>({

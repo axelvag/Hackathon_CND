@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { SeverityStats, SecurityLog } from '../types';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import LogCard from './LogCard';
 
 interface DashboardProps {
@@ -13,6 +13,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ stats, totalLogs, logs, resolvedLogs }: DashboardProps) {
+  const COLORS = useColors();
   const navigate = useNavigate();
   
   // Trier les logs par timestamp (plus récents en premier) et prendre les 3 derniers

@@ -14,7 +14,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import { SecurityLog } from '../types';
 
 interface StatisticsProps {
@@ -23,6 +23,7 @@ interface StatisticsProps {
 }
 
 export default function Statistics({ logs, totalLogs }: StatisticsProps) {
+  const COLORS = useColors();
   // 1. Distribution de sévérité (Donut Chart)
   const severityData = [
     {

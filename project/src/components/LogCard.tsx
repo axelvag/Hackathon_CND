@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Shield, AlertCircle, X } from 'lucide-react';
 import { SecurityLog, formatLogId } from '../types';
-import { COLORS } from '../constants/theme';
+import { useColors } from '../contexts/ThemeContext';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 interface LogCardProps {
@@ -12,6 +12,7 @@ interface LogCardProps {
 }
 
 export default function LogCard({ log, isResolved = false, onDismiss, onClick }: LogCardProps) {
+  const COLORS = useColors();
   const [relativeTime, setRelativeTime] = useState(formatRelativeTime(log.timestamp));
 
   // Mettre à jour le temps relatif toutes les secondes

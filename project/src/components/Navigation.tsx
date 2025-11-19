@@ -1,10 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3 } from 'lucide-react';
-import { COLORS } from '../constants/theme';
+import { Shield, LayoutDashboard, FileText, AlertTriangle, BarChart3, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { getColors } from '../constants/theme';
 import logo from '../Ministère_des_Armées_et_des_Anciens_Combattants.webp';
 
 export default function Navigation() {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
+  const COLORS = getColors(theme);
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -94,6 +97,17 @@ export default function Navigation() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-10 h-10 rounded-md transition-all hover:opacity-80"
+              style={{
+                backgroundColor: COLORS.background.card,
+                color: COLORS.text.primary,
+              }}
+              title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-md" style={{ backgroundColor: COLORS.background.card }}>
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: COLORS.success }} />
               <span className="text-xs font-medium" style={{ color: COLORS.text.secondary }}>
