@@ -5,6 +5,7 @@ Utility functions for firewall log analysis
 import pandas as pd
 import ipaddress
 from datetime import datetime, timedelta
+from reason_model import predict_reason_for_row
 from dataset_labeling.constants import (
     TIMESTAMP_FORMAT,
     MIN_PORT,
@@ -106,6 +107,7 @@ def normalize_to_dict(row) -> dict:
 def get_reason_string(row: dict) -> str | None:
     """
     Extract and normalize reason string from row.
+    Call the predict model if the reason is empty.
 
     Args:
         row: Dictionary containing log entry data
@@ -115,5 +117,15 @@ def get_reason_string(row: dict) -> str | None:
     """
     reason = row.get("reason")
     if pd.isna(reason) or reason in ("", None):
-        return None
-    return str(reason)
+        predicted = predict_reason_for_row(row)
+        if predicted is not None:
+            row["reason"] = predicted
+        else:
+            reason_str = str(reason)
+
+    reason = row.get("reason")
+    if pd.isna(reason) or reason in ("", None):
+        reason_str = None
+    else:
+        reason_str = str(reason)
+    return reason_str
