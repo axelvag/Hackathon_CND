@@ -1,5 +1,38 @@
 # 🛡️ Système d'Analyse de Logs de Firewall - Hackathon CND
 
+
+# Comment lancer le projet ?
+
+### LE SITE HÉBERGÉ:
+https://edr-42-lyon-cnd.netlify.app/
+
+OU
+
+TERMINAL 1
+```bash
+cd frontend/
+npm install
+npm install axios
+npm run dev
+```
+
+TERMINAL 2
+```bash
+cd backend/
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env
+python3 main.py
+```
+
+OUVRIR SUR INTERNET
+```bash
+https://localhost:5173
+```
+
+#### Info
+
 Système complet d'analyse et de visualisation des logs de firewall pour la détection d'attaques et de bugs dans les infrastructures réseau. Le projet combine l'intelligence artificielle (modèles ML et LLM) avec une interface web moderne pour offrir une solution de cybersécurité complète.
 
 ## 📝 Description
@@ -23,8 +56,19 @@ Hackaton_CND/
 ├── frontend/         # Application React/TypeScript
 ```
 
+## Aperçu
+- [Page d'accueil](./images/accueil.png)
+- [Logs simplifiés](./images/logs.png)
+- [Logs mode expert](./images/logs2.png)
+- [Nouveau pare-feu](./images/parefeu2.png)
+
+
 ## 🛠️ Technologies utilisées
 
+### Detection
+- **Python 3.9+**
+- **Scikit-learn** - Bibliothèque d'outils de Machine Learning
+- **lightgbm** - Bibliothèque d'outils de Machine Learning
 ### Backend
 - **Python 3.9+**
 - **FastAPI** - Framework web moderne et rapide
@@ -49,4 +93,4 @@ Hackaton_CND/
 ## 📦 Prérequis / Installation / Lancement
 
 - [Backend README](backend/README.md)
-- [Fronted README](frontend/README.md)
+- [Frontend README](frontend/README.md)
