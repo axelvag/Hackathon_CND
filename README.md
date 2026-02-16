@@ -4,7 +4,7 @@
 # Comment lancer le projet ?
 
 ### LE SITE HÉBERGÉ:
-https://edr-42-lyon-cnd.netlify.app/
+[https://42-lyon-hackathon-2025.netlify.app](https://42-lyon-hackathon-2025.netlify.app)
 
 OU
 
