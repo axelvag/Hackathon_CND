@@ -1,5 +1,6 @@
-# 🛡️ Système d'Analyse de Logs de Firewall - Hackathon CND
+# 🛡️ Vigie - Système d'Analyse de Logs de Firewall - Hackathon CND
 
+![Démo du dashboard CyberDefense](./images/demo.gif)
 
 # Comment lancer le projet ?
 
